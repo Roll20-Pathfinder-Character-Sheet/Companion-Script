@@ -388,7 +388,6 @@ var PFCompanion = PFCompanion || (function() {
 				},msg.content)
 				.value();
 		}
-        log(msg.content);
 		args = msg.content.split(/\s+--/);//splits the message contents into discrete arguments
 		args.shift();
 		args.length===0 ? showHelp(who) : _.each(args,(a)=>{

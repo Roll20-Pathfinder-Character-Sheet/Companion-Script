@@ -242,16 +242,16 @@ var PFCompanion = PFCompanion || (function() {
     },
     
     showHelp = function(who){
-        sendChat('Pathfinder Companion Prototype','/w "'+who+'" Only two chat commands are implemented currently.</br>'
+        sendChat('Pathfinder Companion Prototype','/w "'+who+'" Only two chat commands are implemented currently.<br>'
         +'<b>Token action setup wizard:</b> Command syntax is<br>!pfc --TAS,ignore=menu-type-to-ignore menu-type-to-ignore ...,limit=only-make-this-menu only-make-this-menu ...|characterid/foldername|characterid/foldername|...<br>'
         +'Script will look for selected tokens representing characters if no character id or folder name is passed in the command<br><br>'
         +'<b>Resource Manipulation:</b> Full command syntax will be (currently only ammo is implemented)<br>!pfc --resource[,ammo=AMMONAME][,spelllevel/spellname=#/SPELLNAME][,ability=ABILITYNAME][,current=X/+/-X][,max=X/+/-X]|Character id|character id|...<br>'
-        +'As with TAS, script will look for selected tokens if now characterid is passed. The AMMONAME should be the name of an inventory item. The current and max arguments can be any integer, an addition/subtraction expression, or "max"(case insensitive). Passing max will set that value to the value in the max of that attribute.Can also use inline rolls here.<br><br>'
-        +'<b>Ammo Tracking:</b> If state.PFCompanion.ResourceTrack is set to true (uncomment the appropriate line in checkInstall) the script will look for any repeating weapon sections whose ammo attribute is not 0. It will then add info about the rowID of that repeating section as well as a query about what ammo to use with that attack to the section macro-text field. After this query is answered the first time, it is replaced with the answer. You can enter a different query in the macro-text to have it always ask what ammo to use. The ammo name entered needs to be the name of an inventory item. The script will count the number of attack fields in the outputted roll template and then message how much ammo you had before the attack and how much was used. It will then deduct that much ammo from the inventory item');
+        +'As with TAS, script will look for selected tokens if now characterid is passed. The AMMONAME must be the name of an inventory item. The current and max arguments can be any integer, an addition/subtraction expression, or "max"(case insensitive). Passing max will set that value to the value in the max of that attribute.Can also use inline rolls here.<br><br>'
+        +'<b>Ammo Tracking:</b> If state.PFCompanion.ResourceTrack is set to true (uncomment the appropriate line in checkInstall) the script will look for any repeating weapon sections whose ammo attribute is not 0. It will then add info about the rowID of that repeating section as well as a query about what ammo to use with that attack to the section macro-text field. After this query is answered the first time, it is replaced with the answer. You can enter a different query in the macro-text to have it always ask what ammo to use. The ammo name entered needs to be the name of an inventory item. The script will count the number of attack fields in the outputted roll template. It will also look for any attack names that are manyshot (case insensitive) and increase the amount of ammo used accordingly. It will then deduct that much ammo from the inventory item and then message how much ammo you have remaining/how much ammo you were short by if not enough ammo is present.');
     },
     
     //Ammo Handling
-    //                  string [Roll20 Attrs] Roll20Char Roll20msg
+    //                  string [Roll20 Attrs] Roll20Char Roll20msg, string
     handleAmmo = function(ammo,attributes,character,msg,rollId){
         var ammoId,ammoCount,ammoUsed,macroText,ammoQuery,insufficient,
             isNPC = getAttrByName(character.id,'is_npc')==='0' ? false : true;
@@ -261,11 +261,17 @@ var PFCompanion = PFCompanion || (function() {
         });
         if(ammoId){
             ammoCount = _.find(attributes,(a)=>{return a.get('name')===('repeating_item_'+ammoId+'_qty')});
-            ammoUsed = msg.content.match(/attack\d*=/g).length;
+            ammoUsed = msg.content.match(/attack\d*=/g) ? msg.content.match(/attack\d*=/g).length : undefined;
+            if(!ammoUsed){
+                return;
+            }
+            _.each(msg.content.match(/{{attack\d+name=[^}]+}}/g),(m)=>{
+                ammoUsed += m.match(/manyshot/i) ? 1 : 0;
+            });
             insufficient = ammoUsed-ammoCount.get('current');
             setResource(ammoCount,false,'-'+ammoUsed);
             sendChat('Ammo Tracking','@{'+character.get('name')+'|'+(!isNPC ? 'PC-whisper':'NPC-whisper')+'}&{template:pf_block} @{'+character.get('name')+'|toggle_accessible_flag} @{'+character.get('name')+'|toggle_rounded_flag} {{color=@{'+character.get('name')+'|rolltemplate_color}}} {{header_image=@{'+character.get('name')+'|header_image-pf_block-item}}}'
-            +'{{subtitle=After Using '+ammoUsed+(insufficient>0 ? ('<br><b>INSUFFICIENT AMMO</b><br>needed '+insufficient+' more') : '')+'}} {{name=Remaining @{'+character.get('name')+'|repeating_item_'+ammoId+'_name}}} {{hasuses=@{'+character.get('name')+'|repeating_item_'+ammoId+'_has_uses}}} {{qty=@{'+character.get('name')+'|repeating_item_'+ammoId+'_qty}}} {{qty_max=@{'+character.get('name')+'|repeating_item_'+ammoId+'_qty|max}}}'
+            +'{{subtitle='+(insufficient>0 ? ('<b>INSUFFICIENT AMMO</b><br>'+(ammoUsed-insufficient)+' @{'+character.get('name')+'|repeating_item_'+ammoId+'_name} available') : '')+'}} {{name=Remaining @{'+character.get('name')+'|repeating_item_'+ammoId+'_name}}} {{hasuses=@{'+character.get('name')+'|repeating_item_'+ammoId+'_has_uses}}} {{qty=@{'+character.get('name')+'|repeating_item_'+ammoId+'_qty}}} {{qty_max=@{'+character.get('name')+'|repeating_item_'+ammoId+'_qty|max}}}'
             +'{{shortdesc=@{'+character.get('name')+'|repeating_item_'+ammoId+'_short-description}}} {{description=@{'+character.get('name')+'|repeating_item_'+ammoId+'_description}}}');
             macroText = _.find(attributes,(a)=>{
                 return (a.get('name').toLowerCase().indexOf((rollId.toLowerCase()+((isNPC && a.get('name').indexOf('item')===-1) ? '_npc-macro-text' : '_macro-text')))>-1 && a.get('name').toLowerCase().indexOf('-show')===-1);

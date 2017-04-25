@@ -271,7 +271,7 @@ var PFCompanion = PFCompanion || (function() {
             insufficient = ammoUsed-ammoCount.get('current');
             setResource(ammoCount,false,'-'+ammoUsed);
             sendChat('Ammo Tracking','@{'+character.get('name')+'|'+(!isNPC ? 'PC-whisper':'NPC-whisper')+'}&{template:pf_block} @{'+character.get('name')+'|toggle_accessible_flag} @{'+character.get('name')+'|toggle_rounded_flag} {{color=@{'+character.get('name')+'|rolltemplate_color}}} {{header_image=@{'+character.get('name')+'|header_image-pf_block-item}}}'
-            +'{{subtitle='+(insufficient>0 ? ('<b>INSUFFICIENT AMMO</b><br>'+(ammoUsed-insufficient)+' @{'+character.get('name')+'|repeating_item_'+ammoId+'_name} available') : '')+'}} {{name=Remaining @{'+character.get('name')+'|repeating_item_'+ammoId+'_name}}} {{hasuses=@{'+character.get('name')+'|repeating_item_'+ammoId+'_has_uses}}} {{qty=@{'+character.get('name')+'|repeating_item_'+ammoId+'_qty}}} {{qty_max=@{'+character.get('name')+'|repeating_item_'+ammoId+'_qty|max}}}'
+            +'{{subtitle='+(insufficient>0 ? ('<b>INSUFFICIENT AMMO</b><br>'+(ammoUsed-insufficient)+' @{'+character.get('name')+'|repeating_item_'+ammoId+'_name} available') : '')+'}} {{name=Remaining @{'+character.get('name')+'|repeating_item_'+ammoId+'_name}}} {{hasuses=@{'+character.get('name')+'|repeating_item_'+ammoId+'_has_uses}}} {{qty=@{'+character.get('name')+'|repeating_item_'+ammoId+'_qty}}} {{qty_max='+(parseInt(getAttrByName(character.id,'repeating_item_'+ammoId+'_qty','max'))>0 ? ('@{'+character.get('name')+'|repeating_item_'+ammoId+'_qty|max}') : '-')+'}}'
             +'{{shortdesc=@{'+character.get('name')+'|repeating_item_'+ammoId+'_short-description}}} {{description=@{'+character.get('name')+'|repeating_item_'+ammoId+'_description}}}');
             macroText = _.find(attributes,(a)=>{
                 return (a.get('name').toLowerCase().indexOf((rollId.toLowerCase()+((isNPC && a.get('name').indexOf('item')===-1) ? '_npc-macro-text' : '_macro-text')))>-1 && a.get('name').toLowerCase().indexOf('-show')===-1);
@@ -312,7 +312,9 @@ var PFCompanion = PFCompanion || (function() {
             adj[1]=adj[1]||'=';
             nVal = ops[adj[1]]((max ? attribute.get('max') : attribute.get('current')),adj[2]);
         }
-        nVal ? attribute.set((max ? 'max' : 'current'),Math.max((max ? nVal : (attribute.get('max')> 0 ? Math.min(nVal,attribute.get('max')) : nVal)),0)) : undefined;
+        if(nVal || nVal === 0){
+            attribute.set((max ? 'max' : 'current'),Math.max(((max || parseInt(attribute.get('max'))<= 0) ? nVal : Math.min(nVal,attribute.get('max'))),0));
+        }
     },
     
     //Chat Listener for responding to non-api commands
@@ -352,10 +354,21 @@ var PFCompanion = PFCompanion || (function() {
     	    who = idToDisplayName(msg.playerid),
 			args,cmdDetails,characters,folders;
 			
-
+        
         if(msg.type !== 'api'){
             if(msg.rolltemplate){
                 if(msg.rolltemplate.indexOf('pf')===0){
+                    if(_.has(msg,'inlinerolls')){//calculates inline rolls
+                        msg.content = _.chain(msg.inlinerolls)
+                            .reduce(function(m,v,k){
+                                m['$[['+k+']]']=v.results.total || 0;
+                                return m;
+                            },{})
+                            .reduce(function(m,v,k){
+                                return m.replace(k,v);
+                            },msg.content)
+                            .value();
+                    }
                     listener(msg);
                 }
             }
@@ -363,8 +376,8 @@ var PFCompanion = PFCompanion || (function() {
         }else if(!playerIsGM(msg.playerid) || msg.content.indexOf('!pfc')!==0){
             return
         }
-
-		if(_.has(msg,'inlinerolls')){//calculates inline rolls
+        
+        if(_.has(msg,'inlinerolls')){//calculates inline rolls
 			msg.content = _.chain(msg.inlinerolls)
 				.reduce(function(m,v,k){
 					m['$[['+k+']]']=v.results.total || 0;
@@ -375,7 +388,7 @@ var PFCompanion = PFCompanion || (function() {
 				},msg.content)
 				.value();
 		}
-        
+        log(msg.content);
 		args = msg.content.split(/\s+--/);//splits the message contents into discrete arguments
 		args.shift();
 		args.length===0 ? showHelp(who) : _.each(args,(a)=>{

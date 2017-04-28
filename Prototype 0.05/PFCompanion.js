@@ -40,9 +40,9 @@ Pathfinder Companion Script
 var PFCompanion = PFCompanion || (function() {
     'use strict';
 
-    var version = 'Prototype 0.05,
-        lastUpdate = 1493349634,
-        schemaVersion = 0.05
+    var version = 'Prototype 0.04',
+        lastUpdate = 1493146677,
+        schemaVersion = 0.04,
 
     ch = function (c) {
         var entities = {
@@ -397,16 +397,11 @@ var PFCompanion = PFCompanion || (function() {
         }
     },
     
-    handleSpellCommand = async function(spell,character,spellClass,changeCurrent){
+    handleSpellCommand = function(spell,character,spellClass,changeCurrent){
         var attributes = findObjs({type:'attribute',characterid:character.id}),
             manualTotal = getAttrByName(character.id,'total_spells_manually')==='0' ? false : true,
             isNPC = getAttrByName(character.id,'is_npc')==='0' ? false : true,
-            workerWait = new Promise((resolve,reject)=>{
-                onSheetWorkerCompleted(()=>{
-                    resolve('completed');
-                });
-            }),
-            attrToID,spellNameAttr,rowID,spellUsedAttr,insufficient,spontaneous,spellMax,spellLevel,spellMaxValue;
+            workerWait,attrToID,spellNameAttr,rowID,spellUsedAttr,insufficient,spontaneous,spellMax,spellLevel,spellMaxValue;
             
         spellNameAttr = _.find(attributes,(a)=>{return a.get('name').match(/repeating_spells_-[^_]+_name/) && a.get('current')===spell});
         rowID = spellNameAttr ? extractRowID(spellNameAttr.get('name')) : undefined;
@@ -431,23 +426,31 @@ var PFCompanion = PFCompanion || (function() {
         spellUsedAttr = rowID ? _.find(attributes,(a)=>{return a.get('name').toLowerCase()===('repeating_spells_'+rowID+'_used').toLowerCase()}) : ((parseInt(spell) && spellClass && manualTotal) ? _.find(attributes,(a)=>{return a.get('name')==='spellclass-'+spellClass+'-level-'+spell+'spells-per-day'}) : undefined);
         spellUsedAttr = spellUsedAttr ? spellUsedAttr : createObj('attribute',{characterid:character.id,name:'repeating_spells_'+rowID+'_used'});
         if(spellUsedAttr){
-            spellUsedAttr.get('current')==='' ? spellUsedAttr.setWithWorker('current','0') : undefined;
-            await workerWait;
-        }
-        spellMax = _.find(attributes,(a)=>{return a.get('name')===('spellclass-'+spellClass+'-level-'+spellLevel+'-spells-per-day')});
-        if(spellUsedAttr && spellMax){
-            attrToID = spellUsedAttr.get('name').match(/(?:(repeating_.+_-[^_]+)_.+)/);
-            attrToID = attrToID ? attrToID[1] : undefined;
-            spellMaxValue = parseInt(spellMax.get('max'))-((spellMax.get('current')!=='' ? parseInt(spellMax.get('current')) : 0)-parseInt(spellUsedAttr.get('current')));
-            onSheetWorkerCompleted(()=>{
-                sendChat('Spell Tracking','@{'+character.get('name')+'|'+(!isNPC ? 'PC-whisper':'NPC-whisper')+'} &{template:pf_block} @{'+character.get('name')+'|toggle_accessible_flag} @{'+character.get('name')+'|toggle_rounded_flag} {{color=@{'+character.get('name')+'|rolltemplate_color}}} '
-                +'{{subtitle='+(insufficient>0 ? ('<b>INSUFFICIENT SPELLCASTING</b>') : '')+'}} {{name='+(spontaneous ? 'Level '+spellLevel+' Spells Used' : 'Prepared @{'+character.get('name')+'|'+attrToID+'_name} Remaining')+'}} {{hasuses=1}} {{qty='+(spontaneous ? spellMax.get('current')+'}} {{qty_max='+spellMax.get('max')+'}}' : spellUsedAttr.get('current')+'}} {{qty_max=-}}')
-                +'{{description=@{'+character.get('name')+'|'+attrToID+'_description}}}');
-            });
-            insufficient = (changeCurrent && spellUsedAttr && rowID) ? setResource(spellUsedAttr,false,changeCurrent,true,spellMaxValue) : 0;
-            insufficient = spontaneous ? (insufficient - spellMaxValue) : (0 - insufficient);
-            
-            //msgResourceState(character,(),rowID,0,((0-insufficient)||0),spellUsedAttr);
+            workerWait = spellUsedAttr.get('current')==='' ? setResource(spellUsedAttr,false,0,true,0) : Promise.resolve(0);
+            workerWait.then((w)=>{
+                log('w: '+w);
+                log(spellClass);
+                log(spellLevel);
+                spellMax = _.find(attributes,(a)=>{return a.get('name')===('spellclass-'+spellClass+'-level-'+spellLevel+'-spells-per-day')});
+                if(spellMax){
+                    spellMax.get('current') === '' ? spellMax.set('current','0') : undefined;
+                    log(spellMax);
+                    attrToID = spellUsedAttr.get('name').match(/(?:(repeating_.+_-[^_]+)_.+)/);
+                    attrToID = attrToID ? attrToID[1] : undefined;
+                    spellMaxValue = parseInt(spellMax.get('max'))-((spellMax.get('current')!=='' ? parseInt(spellMax.get('current')) : 0)-parseInt(spellUsedAttr.get('current')));
+                    insufficient = (changeCurrent && spellUsedAttr && rowID) ? setResource(spellUsedAttr,false,changeCurrent,true,spellMaxValue) : Promise.resolve(0);
+                    insufficient.then((i)=>{
+                        i = spontaneous ? (i - spellMaxValue) : (0 - i);
+                        sendChat('Spell Tracking','@{'+character.get('name')+'|'+(!isNPC ? 'PC-whisper':'NPC-whisper')+'} &{template:pf_block} '
+                        +'@{'+character.get('name')+'|toggle_accessible_flag} @{'+character.get('name')+'|toggle_rounded_flag} '
+                        +'{{color=@{'+character.get('name')+'|rolltemplate_color}}} {{subtitle='+(i>0 ? ('<b>INSUFFICIENT SPELLCASTING</b>') : '')+'}} '
+                        +'{{name='+(spontaneous ? 'Level '+spellLevel+' Spells Used' : 'Prepared @{'+character.get('name')+'|'+attrToID+'_name} Remaining')+'}} '
+                        +'{{hasuses=1}} {{qty='+(spontaneous ? spellMax.get('current')+'}} {{qty_max='+spellMax.get('max')+'}}' : spellUsedAttr.get('current')+'}} '
+                        +'{{qty_max=-}}')+'{{description=@{'+character.get('name')+'|'+attrToID+'_description}}}');
+                    }).catch((e)=>{log(e)});
+                    //msgResourceState(character,(),rowID,0,((0-insufficient)||0),spellUsedAttr);
+                }
+            }).catch((e)=>{log(e)});
         }
     },
     
@@ -463,10 +466,9 @@ var PFCompanion = PFCompanion || (function() {
                 '=': (a,b)=>b
             },
             rowID = extractRowID(attribute.get('name')),
-            adj=(''+change.trim()).match(/([+-]?)([\d]+)/),
-            nVal,returnValue,maxValue,spellClass;
-            
-        if(change.toLowerCase()==='max'){
+            adj=(''+change).trim().match(/([+-]?)([\d]+)/),
+            nVal,returnValue,maxValue,spellClass,waiter,promiseTest;
+        if((''+change).toLowerCase()==='max'){
             nVal = altMax ? altMax : attribute.get('max');
         }else if(adj){
             adj[2]=parseInt(adj[2],10);
@@ -477,10 +479,16 @@ var PFCompanion = PFCompanion || (function() {
             nVal = Math.max(((max || parseInt(maxValue)=== 0 || maxValue.length===0) ? nVal : Math.min(nVal,maxValue)),0);
         }
         if(nVal || nVal === 0){
+            waiter = new Promise((resolve,reject)=>{
+                withWorker ? onSheetWorkerCompleted(()=>{
+                    resolve(returnValue);
+                }) : resolve(returnValue);
+            });
             withWorker ? attribute.setWithWorker((max ? 'max' : 'current'),nVal) : attribute.set((max ? 'max' : 'current'),nVal);
-            return returnValue;
+        }else{
+            waiter = Promise.resolve(0);
         }
-        return 0;
+        return waiter;
     },
     
     //Chat Listener for responding to non-api commands
@@ -688,9 +696,7 @@ var PFCompanion = PFCompanion || (function() {
                 break;
             case 'add':
                 if(obj.get('name').match(/repeating_[^_]+_-[^_]+_name|repeating_[^_]+_-[^_]+_spell_level|repeating_[^_]+_-[^_]+_spellclass_number/)){
-                    _.defer((o)=>{
-                        initializeRepeatingResourceTracking(extractRowID(o.get('name')),findObjs({type:'attribute',characterid:o.get('characterid')}))
-                    },obj);
+                    initializeRepeatingResourceTracking(extractRowID(obj.get('name')),findObjs({type:'attribute',characterid:obj.get('characterid')}));
                 }
                 break;
             case 'destroy':

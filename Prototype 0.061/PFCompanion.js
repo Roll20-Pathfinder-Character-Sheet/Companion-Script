@@ -318,7 +318,14 @@ var PFCompanion = PFCompanion || (function() {
         hasUses = getAttrByName(character.id,'repeating_ability_'+rowID+'_hasuses') === '1' ? true : false;
         
         duplicate = macroText.match(/{{Ability Tracking=\[\*\*-\*\*\]\([^\)]+\)\[\*\*\+\*\*\]\([^\)]+\)\[\*\*\?\*\*\]\([^\)]+\)}}/g);
+        if(rowID.toLowerCase()==='-kiuymyoqvgo04whxjou'){
+            log(hasUses);
+            log(duplicate);
+        }
         _.each(duplicate,(d)=>{
+            if(rowID.toLowerCase()==='-kiuymyoqvgo04whxjou'){
+                log(d);
+            }
             macroText = (!d.match('='+abilityName.get('current')+',') || !hasUses) ? macroText.replace(d+' ','') : macroText;
         });
         abilityButtonField = '{{Ability Tracking=[**-**](!pfc --resource,ability='+abilityName.get('current')+',current=-1|'+character.id+')[**+**](!pfc --resource,ability='+abilityName.get('current')+',current=+1|'+character.id+')[**?**](!pfc --resource,ability='+abilityName.get('current')+',current=?'+HE('{')+'Ability Adjustment}|'+character.id+')}}';
@@ -740,7 +747,7 @@ var PFCompanion = PFCompanion || (function() {
     },
     
     showHelp = function(who){
-        sendChat('Pathfinder Companion','/w "'+who+'" <b><u>[Access The Help Sheet](https://journal.roll20.net/character/'+state.PFCompanion.helpLink+')</u></b>');
+        sendChat('Pathfinder Companion','/w "'+who+'" <b><u>[Access The Help Sheet](https://journal.roll20.net/handout/'+state.PFCompanion.helpLink+')</u></b>');
     },
     
     HandleInput = function(msg_orig) {

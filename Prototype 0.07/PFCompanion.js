@@ -197,6 +197,7 @@ var PFCompanion = PFCompanion || (function() {
             +'<li><b>Custom Attribute tracking:</b> !pfc --resource,note=Custom Attribute Name,current=max OR +/-X OR X|characterid|characterid|...</li>'
             +'<li><b>Whisper Adjusting:</b> !pfc --whisper,npc=public/private/swap,pc=public/private/swap,stats=public/private/swap|characerid|characterid|...</li>'
             +'<li><b>Access the Config Menu:</b> !pfc --config</li>'
+            +'<li><b>Apply/Remove Buffs Conditions:</b> !pfc --apply,condition=all or part of a condtion name,buff=all or part of a buff name that has already been setup on the character,remove/swap|characterid|characterid|...'
             +'</ul>';
             
         helpCharacter.set('notes',notes);

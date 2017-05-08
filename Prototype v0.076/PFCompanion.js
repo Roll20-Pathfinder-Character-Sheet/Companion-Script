@@ -24,10 +24,10 @@ Pathfinder Companion Script
 var PFCompanion = PFCompanion || (function() {
     'use strict';
 
-    var version = 'Prototype 0.075',
+    var version = 'Prototype 0.076',
         sheetVersion = 1.5,
         lastUpdate = 1494140001,
-        schemaVersion = 0.075,
+        schemaVersion = 0.076,
         defaults = {
             css: {
                 button: {
@@ -960,6 +960,7 @@ var PFCompanion = PFCompanion || (function() {
         parser = () =>{
             accrue = {};
             attributesToSet = {};
+            description = undefined;
             iChar = characters.shift();
             attributes = findObjs({type:'attribute',characterid:iChar.id});
             createAttrWithWorker('is_npc',iChar.id,attributes,'1');

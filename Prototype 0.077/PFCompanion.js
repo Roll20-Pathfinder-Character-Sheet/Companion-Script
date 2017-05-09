@@ -1390,7 +1390,7 @@ var PFCompanion = PFCompanion || (function() {
     RegisterEventHandlers = function() {
         //message handling
         on('chat:message', HandleInput);
-        /*
+      	
         //attribute handling
         on('change:attribute',(obj,prev)=>{attributeHandler(obj,'change',prev)});
         on('add:attribute',(obj,prev)=>{attributeHandler(obj,'add',prev)});
@@ -1398,7 +1398,6 @@ var PFCompanion = PFCompanion || (function() {
         //character handling
         on('add:character',(obj,prev)=>{characterHandler(obj,'add',prev)});
         on('change:character',(obj,prev)=>{characterHandler(obj,'change',prev)});
-        */
     };
     
     return {

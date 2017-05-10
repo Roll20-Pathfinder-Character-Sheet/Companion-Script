@@ -955,12 +955,9 @@ var PFCompanion = PFCompanion || (function() {
                     keys = _.keys(accrue);
                     keyWorker = async () =>{
                         var k = keys.shift();
-                        log(k);
                         switch(true){
                             case (k==='gear'||k==='gear 1'||k==='gear 2'):
-                                log(accrue[k]);
                                 var gearType = accrue[k].match(/^(GEAR\n+|Gear\s+|Other Gear\s+|Combat Gear\s+)/) ? accrue[k].match(/^(GEAR\n+|Gear\s+|Other Gear\s+|Combat Gear\s+)/)[0] : undefined;
-                                log(gearType);
                                 accrue[k]=accrue[k].replace(gearType,'');
                                 if(gearType.match(/^(GEAR|Gear|Other Gear)/)){
                                     await createAttrWithWorker('npc-other-gear',iChar.id,attributes,accrue[k]);

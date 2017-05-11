@@ -26,7 +26,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.083',
         sheetVersion = 1.51,
-        lastUpdate = 1494532951,
+        lastUpdate = 1494540418,
         schemaVersion = 0.083,
         defaults = {
             css: {
@@ -867,18 +867,18 @@ var PFCompanion = PFCompanion || (function() {
                 'long description':[null,'long description'],
                 'default':[null,'avatar','token','description','character_name','cr_compendium','xp_compendium','class','alignment','size_compendium','type_compendium','subtype','init_compendium','senses_compendium','weaknesses','npc-aura']
             },
-            defenseMatch=/DEFENSE\n+(AC\s+[^\n]+)\n+hp\s+([^\n]+)\n+Fort\s+([^,]+),\s+Ref\s+([^,]+),\s+Will\s+([^\n]+)\n+(?:Defensive\s+Abilities\s+([^;\n]+))?[;\n]?(?:\s+DR\s+([^;]+);)?(?:\s+)?(?:Immune\s([^;]+);)?(?:\s+)?(?:Resist\s+([^;]+);)?(?:\s+)?(?:SR\s+(\d+))?(?:\n+)?/,
+            defenseMatch=/DEFENSE\n+(AC\s+[^\n]+)\n+hp\s+([^\n]+)\n+Fort\s+([^,;]+)(?:,|;)\s+Ref\s+([^,;]+)(?:,|;)\s+Will\s+([^\n]+)\n+(?:Defensive\s+Abilities\s+([^;\n]+))?(?:;|\n+|\s+)?(?:DR\s+([^;\n]+);)?(?:\s+)?(?:Immune\s([^;\n]+)(?:;)?)?(?:\s+)?(?:Resist\s+([^;\n]+);)?(?:\s+)?(?:SR\s+(\d+))?(?:\n+)?(?:Weaknesses\s+([^\n]+))?/,
             offenseMatch=/OFFENSE\n+Speed\s+([^\n]+)\n+(?:Melee\s+([^\n]+)\n+)?(?:Ranged\s+([^\n]+)(?:\n+)?)?(?:Space\s+([^;]+);)?(?:\s+Reach\s+([^\n]+)(?:\n+)?)?(?:Special Attacks\s+([^\n]+))?(?:\n+)?(?:((?:Spell-Like Abilities|Psychic Magic|(?:[^\s\n]+\s+)?Spells Prepared|(?:[^\s\n]+\s+)?Spells Known)\s+.+\n+(?:.+\n+)+))?/,
             tacticsMatch=/(TACTICS\n+.+\n+(?:.+(?:\n+)?)+)/,
-            statisticsMatch=/STATISTICS\n+Str\s+([^,]+),\s+Dex\s+([^,]+),\s+Con\s+([^,]+),\s+Int\s+([^,]+),\s+Wis\s+([^,]+),\s+Cha\s+([^\n]+)\n+Base Atk\s+(\+\d+);\s+CMB\s+([^;]+);\s+CMD\s+([^\n]+)(?:\n+)?(?:Feats\s+([^\n]+)(?:\n+)?)?(?:Skills\s+([^\n;]+)(?:;\s+Racial Modifiers\s+([^\n]+))?)(?:\n+)?(?:Languages\s+([^\n]+))?(?:\n+)?(?:SQ\s+([^\n]+))?(?:\n+)?((?:Combat Gear|Other Gear)\s+[^;\n]+|Gear\n(?:.*(?:\n+)?)+)?(?:;)?(Other Gear\s+[^;\n]+)?(?:\n+)?(.*$)?/,
+            statisticsMatch=/STATISTICS\n+Str\s+([^,]+),\s+Dex\s+([^,]+),\s+Con\s+([^,]+),\s+Int\s+([^,]+),\s+Wis\s+([^,]+),\s+Cha\s+([^\n]+)\n+Base Atk\s+(\+\d+);\s+CMB\s+([^;]+);\s+CMD\s+([^\n]+)(?:\n+)?(?:Feats\s+([^\n]+)(?:\n+)?)?(?:Skills\s+([^\n;]+)(?:;\s+Racial Modifiers\s+([^\n]+))?)?(?:\n+)?(?:Languages\s+([^\n]+))?(?:\n+)?(?:SQ\s+([^\n]+))?(?:\n+)?((?:Combat Gear|Other Gear)\s+[^;\n]+|Gear\n(?:.*(?:\n+)?)+)?(?:;)?(Other Gear\s+[^;\n]+)?(?:\n+)?(.*$)?/,
             saMatch=/((?:SPECIAL ABILITIES)\n+(?:.*(?:\n+)?)+)/,
             ecologyMatch=/((?:ECOLOGY)\n+(?:.*(?:\n+)?)+)/,
             defaultMatch=/(?:Avatar\s+([^\n]+)\n+)?(?:Token\s+([^\n]+)\n+)?(?:([^\n]+)\n+)?([^\t]+)(?:\s+)?CR\s+([^\n]+)\n+XP\s+([^\n]+)\n+(?:([\w\s]+\d+)\n+)?(LG|NG|CG|LN|N|CN|LE|NE|CE)\s+(Fine|Diminutive|Tiny|Small|Medium|Large|Huge|Gargantuan|Colossal)\s+([\w\s]+)(?:\s+(\([\w\s,]+\)))?\n+Init\s+([^;]+);\s+Senses\s+([^;]+;\s+Perception\s+[^\n]+)(?:\n+)?(?:Weakness\s+([^\n]+)\n+)?(?:Aura\s+([^\n]+)\n+)?/,
             gearMatch=/((?:GEAR)\n+(?:.*(?:\n+)?)+)/,
             descriptionMatch = /LONG DESCRIPTION\n+((?:.+|\n+)+)/,
             accrue,attributesToSet,description,setAttr,attrWorker,
-            charList=[],
-            section,keys,parser,parseSection,statBlock,keyWorker,
+            charList=[],charListLength,
+            section,keys,parser,parseSection,statBlock,keyWorker,usesSpells,
             start = _.now();
             
         text =_.chain(text.replace(/<br\/>/g,'').replace(/<br>/g,'\n').split(/(?:\n+)?NEW CREATURE(?:\n+)?/))
@@ -887,7 +887,7 @@ var PFCompanion = PFCompanion || (function() {
             })
             .reject((t)=>{return(_.isUndefined(t) || _.isEmpty(t))})
             .value();
-        sendChat('Pathfinder Companion Statblock Parser','/w "'+who+'" Statblock parsing and import of '+text.length+' statblock'+(text.length>1 ? 's':'')+' started. As creatures are successfully parsed, notifications will be sent to chat. Please do not send further API commands until parsing is complete. Newly imported sheets may be unresponsive for a while after import as the sheetworkers finish firing.');
+        sendChat('Pathfinder Companion Statblock Parser','/w "'+who+'" Statblock parsing and import of '+text.length+' statblock'+(text.length>1 ? 's':'')+' started. As creatures are successfully parsed, notifications will be sent to chat. Please do not send further API commands until parsing is complete. Newly imported sheets may be unresponsive for a while after import as the sheetworkers finish firing.',null,{noarchive:true});
         if(characters){
             if(characters.length<text.length){
                 for(var l = characters.length;l<text.length;l++){
@@ -902,6 +902,7 @@ var PFCompanion = PFCompanion || (function() {
         }
         
         parser = async () =>{
+            usesSpells=false;
             accrue = {};
             attributesToSet = {};
             description = undefined;
@@ -1026,6 +1027,7 @@ var PFCompanion = PFCompanion || (function() {
                                     if(a.match(/^(?:\n)?(?:Spell-Like Abilities|Psychic Magic)\s/)){
                                         attributesToSet['npc-spellike-ability-text'] = attributesToSet['npc-spellike-ability-text'] ? attributesToSet['npc-spellike-ability-text']+a : a.replace(/^\n/,'');
                                     }else{
+                                        usesSpells=true
                                         attributesToSet['npc-spells-known-text'] = attributesToSet['npc-spells-known-text'] ? attributesToSet['npc-spells-known-text']+a : a.replace(/^\n/,'');
                                     }
                                 });
@@ -1052,6 +1054,10 @@ var PFCompanion = PFCompanion || (function() {
                                 attributesToSet['character_description'] = (attributesToSet['character_description'] ? attributesToSet['character_description']+'<br>' : '')+accrue[k];
                                 break;
                             default:
+                                if(_.some(_.rest(statisticsMatch),(m)=>{return k===m}) || _.some(_.rest(defenseMatch),(m)=>{return k===m})){
+                                    log(k);
+                                    log(accrue[k]);
+                                }
                                 attributesToSet[k] = accrue[k];
                                 break;
                         }
@@ -1090,21 +1096,31 @@ var PFCompanion = PFCompanion || (function() {
                     };
                     await attrWorker();
                     await new Promise((resolve,reject)=>{
-                        setTimeout((name,id,attr)=>{
+                        _.defer((name,id,attr)=>{
                             resolve(createAttrWithWorker(name,id,attr,'1'));
-                        },0,'npc_import_now',iChar.id,attributes);
+                        },'npc_import_now',iChar.id,attributes);
                     });
                     if(!_.isEmpty(attributesToSet['character_description'])){
                         setAttr = _.find(attributes,(a)=>{return a.get('name')==='character_description'});
                         setAttr ? setAttr.set('current',attributesToSet['character_description']) : attributes.push(createObj('attribute',{characterid:iChar.id,name:'character_description',current:attributesToSet['character_description']}));
                     }
-                    log('  > Pathfinder Companion Statblock Parser:'+iChar.get('name')+' imported <');
-                    sendChat('Pathfinder Companion Statblock Parser','/w "'+who+'" '+iChar.get('name')+' imported',null,{noarchive:true});
+                    if(usesSpells){
+                        await new Promise((resolve,reject)=>{
+                            _.defer((iC,w)=>{
+                                log('  > Pathfinder Companion Statblock Parser:'+iC.get('name')+' imported <');
+                                sendChat('Pathfinder Companion Statblock Parser','/w "'+w+'" '+iC.get('name')+' imported',null,{noarchive:true});
+                                resolve('notification sent');
+                            },iChar,who);
+                        });
+                    }else{
+                        log('  > Pathfinder Companion Statblock Parser:'+iChar.get('name')+' imported <');
+                        sendChat('Pathfinder Companion Statblock Parser','/w "'+who+'" '+iChar.get('name')+' imported',null,{noarchive:true});
+                    }
+                    
                     if(!_.isEmpty(text)){
                         _.defer(parser);
                     }else{
-                        log('  > Pathfinder Companion Statblock Parser: '+charList.length+' character'+(charList.length>1 ? 's':'')+' parsed and imported in '+((_.now()-start)/1000)+' seconds');
-                        sendChat('Pathfinder Companion Statblock Parser','/w "'+who+'" '+charList.length+' character'+(charList.length>1 ? 's':'')+'  parsed and imported in '+((_.now()-start)/1000)+' seconds',null,{noarchive:true});
+                        charListLength=charList.length;
                         if(state.PFCompanion.TAS==='auto' || state.PFCompanion.ResourceTrack==='on'){
                             var charToInit;
                             var charInit = async () => {
@@ -1112,13 +1128,23 @@ var PFCompanion = PFCompanion || (function() {
                                 await initializeCharacter(charToInit);
                                 log('  > Pathfinder Companion Statblock Parser:'+charToInit.get('name')+' initialized <');
                                 if(!_.isEmpty(charList)){
-                                    _.defer(charInit);
+                                    return new Promise((resolve,reject)=>{
+                                        _.defer(()=>{resolve(charInit())});
+                                    });
                                 }else{
                                     log('  > Pathfinder Companion Statblock Parser: All NPCs initialized. Total import time:'+((_.now()-start)/1000)+' seconds <');
+                                    return 'All Characters Initialized';
                                 }
                             };
-                            charInit();
+                            await charInit();
                         }
+                        await new Promise((resolve,reject)=>{
+                            _.defer((cL,w,s)=>{
+                                log('  > Pathfinder Companion Statblock Parser: '+cL+' character'+(cL>1 ? 's':'')+' parsed and imported in '+((_.now()-s)/1000)+' seconds');
+                                sendChat('Pathfinder Companion Statblock Parser','/w "'+w+'" '+cL+' character'+(cL ? 's':'')+'  parsed and imported in '+((_.now()-s)/1000)+' seconds',null,{noarchive:true});
+                                resolve('Import Finished');
+                            },charListLength,who,start);
+                        });
                     }
                 }
             };

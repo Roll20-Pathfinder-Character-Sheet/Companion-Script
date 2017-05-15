@@ -1,4 +1,5 @@
-THIS IS STILL BETA SO USE ON A COPY OF YOUR CAMPAIGN OR CHARACTERS.
+THIS IS STILL BETA SO USE ON A COPY OF YOUR CAMPAIGN OR CHARACTERS. The API can access multiple characters at once so it is best to backup first.
+
 To start up type:
 !pfc --help
 

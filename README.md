@@ -9,6 +9,11 @@ Known issues
     1. While the script supports importing of multiple statblocks with a single command, limit how many creatures you import at a given time as the time it takes to import increases non-linearly (especially if they cast spells).
 1. I would recommend waiting to install the script until I upload the next version of the beta as some of the syntax for how resource tracking is handled will be changed.
 
+Token Actions
+-------------
+This creates token actions for the main menu buttons at the top of the character sheet.
+Access the config menu by typing !pfc --config To create token macros click on token actions to switch from 'Off' to 'Auto'. Then open a character sheet. When you look at the Abilities tab you'll see the menus already there. Click on the token and you will see the macros appear at the upper left as token actions. 
+
 
 Automatic Attribute Handling
 ----------------------------

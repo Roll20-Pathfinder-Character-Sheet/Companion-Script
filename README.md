@@ -1,6 +1,9 @@
 To start up type:
 !pfc --help
 
+To access the menu type:
+!pfc --config
+
 Known issues
 ------------
 1. Applying buffs/conditions: the buff or condition is activated, but we are still working on getting a given effect to fully propagate throughout the sheet

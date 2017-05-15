@@ -1,3 +1,4 @@
+THIS IS STILL BETA SO USE ON A COPY OF YOUR CAMPAIGN OR CHARACTERS.
 To start up type:
 !pfc --help
 

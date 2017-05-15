@@ -1,3 +1,7 @@
+To start up type:
+!pfc --help
+
+
 1. Applying buffs/conditions: the buff or condition is activated, but we are still working on getting a given effect to fully propagate throughout the sheet
 1. Statblock parsing: 
     1. DO NOT attempt to parse Lucifer, Prince of Darkness from pfsrd. He is just too large, and will almost certainly crash your script environment by triggering an infinite loop error.

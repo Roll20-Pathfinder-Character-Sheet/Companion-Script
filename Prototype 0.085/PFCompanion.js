@@ -26,7 +26,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.085',
         sheetVersion = [1.53,1.52,1.51],
-        lastUpdate = 1495045305,
+        lastUpdate = 1495056388,
         schemaVersion = 0.085,
         defaults = {
             css: {
@@ -261,9 +261,9 @@ var PFCompanion = PFCompanion || (function() {
 	
     generateHelp = function(){
         var notes,gmnotes,
-            helpCharacter = state.PFCompanion.helpLink ? getObj('character',state.PFCompanion.helpLink) : undefined;
+            helpCharacter = state.PFCompanion.helpLink ? getObj('handout',state.PFCompanion.helpLink) : undefined;
         if(!helpCharacter){
-            helpCharacter = createObj('character',{name:'Pathfinder Companion',archived:true,inplayerjournals:'all',avatar:largeLogo});
+            helpCharacter = createObj('handout',{name:'Pathfinder Companion',archived:true,inplayerjournals:'all',avatar:largeLogo});
             state.PFCompanion.helpLink = helpCharacter.id;
         }
         
@@ -274,7 +274,8 @@ var PFCompanion = PFCompanion || (function() {
             +'<li>Automatically create token actions for macro menus: Enabling this will automatically create the indicated abilities for all PCs and NPCs as they are created or made into NPCs. Enabling the setting adds a menu where you can specify what menus should be created for all characters categorized by PC or NPC.</li>'
             +'<li>Automatic Resource Tracking: Will create handling for automatically tracking ammo for weapons and spell, ability, and item usages.</li>'
             +'<li>Automatically handle HP changes: Enabling this will autodeduct damage from temporary hp before affecting HP. It will also prevent healing from occurring beyond the max HP of a character.</li>'
-            +'<li>Maintain PC default tokens: Enabling this option will bring up a table to set what attribute (by case insensitive name) each bar should link to and whether that bar should be visible to players or not (the vision buttons do not currently have an effect). Having this option turned on will also update the default token of a character whenever there is a change made to that character (excluding movement and var value/max changes). NOTE: With this setting enabled, setting a token to represent a character will update the bar links and values to be synced appropriately. This will not be reflected in the token setup pop-up until you reload the menu. Exit the menu by hitting "CANCEL" (NOT "APPLY") and your token will be set as the default token for that character and setup as per the settings in the config menu.</li>'
+            +'<li>Maintain PC default tokens: Enabling this option will bring up a table to set what attribute (by case insensitive name) each bar should link to and whether that bar should be visible to players or not. Having this option turned on will also update the default token of a character whenever there is a change made to that character (excluding movement and var value/max changes). NOTE: With this setting enabled, setting a token to represent a character will update the bar links and values to be synced appropriately. This will not be reflected in the token setup pop-up until you reload the menu. Exit the menu by hitting "CANCEL" (NOT "APPLY") and your token will be set as the default token for that character and setup as per the settings in the config menu.</li>'
+            +'<li>Apply Condition/Buff statusmarkers: Enabling this will apply the appropriate statusmarker to all tokens representing the buffed/conditioned character if that character is controlled by at least one player. You can designate statusmarkers to use for buffs on a per character basis by using the <b>!pfc --buffstatus</b> command while you have a single token selected or by passing a single character id after (e.g. <b>!pfc --buffstatus|@{Jord Strongbow|character_id}</b>. <b><i><u>NOTE</u></i></b> this setting will not work correctly unless <u>Maintain PC default tokens<u> is enabled'
             +'</ul>'
             +'</p>'
             +'<p>'
@@ -314,12 +315,14 @@ var PFCompanion = PFCompanion || (function() {
             +'<li><b>Access the Config Menu:</b> !pfc --config</li>'
             +'<li><b>Apply/Remove Buffs Conditions:</b> !pfc --apply,condition=all or part of a condtion name,buff=all or part of a buff name that has already been setup on the character,remove/swap|characterid|characterid|...'
             +'<li><b>Import Statblock:</b> !pfc --parse|characterid|characterid|characterid| OR !pfc --parse|{{statblock NEWCREATURE statblock NEW CREATURE ...}}<br>Copy your statblock (pure text only - copy into a text editor first to clean off formatting) into the gmnotes of a fresh character or directly via chat, and then run the command. I have only tested the parser on pfsrd statblocks (and not many of those) so far, and hope to overcome the issues preventing multiple statblocks from being imported at once, as well as hopefully eventually allowing statblocks to be imported from chat.'
+            +'<li><b>Buff statusmarker wizard:</b> !pfc --buffstatus|characterid<br>The characterid is optional if you have a token representing a character selected. The command only works on a single character; having more than one token selected or passing more than one character id will only act on the first character in the list (this is unpredictable when using selected tokens).'
             +'</ul>';
             
-        helpCharacter.set('bio',notes);
+        helpCharacter.set('notes',notes);
     },
     
     initialize = async function(){
+        try{
         var characters;
             
         characters=findObjs({type:'character'});
@@ -329,10 +332,14 @@ var PFCompanion = PFCompanion || (function() {
             log('  > Pathfinder Companion: '+characters[i].get('name')+' initialized <')
         }
         log('  > Pathfinder Companion: Initialization Completed <');
+        }catch(err){
+            sendError(err);
+        }
     },
     debouncedInitialize = _.debounce(initialize,3000),
     
     initializeCharacter = function(c){
+        try{
         var attributes = findObjs({type:'attribute',characterid:c.id}),
             rollIds,rowID;
             
@@ -354,10 +361,14 @@ var PFCompanion = PFCompanion || (function() {
                 resolve('initialized');
             },attributes,c);
         });
+        }catch(err){
+            sendError(err);
+        }
     },
     
     //                                          string   [Roll20attr]
     initializeRepeatingResourceTracking = function(r,attributes){
+        try{
         if(!r || !attributes){
             return;
         }
@@ -394,9 +405,13 @@ var PFCompanion = PFCompanion || (function() {
             sectionType = 'none';
         }
         macroTextObject ? handleSection[(sectionType || 'none')](getObj('character',macroTextObject.get('characterid')),macroTextObject,attributes,isNPC,r) : undefined;
+        }catch(err){
+            sendError(err);
+        }
     },
     
     initializeWeapon = function(character,macroTextObject,attributes,isNPC,rowID){
+        try{
         var rollTemplate,
             spellClass,spontaneous,sourceSpellName,duplicateSpell,spellTrackingButtonField,spellDescButtonField,
             mainAmmo,offAmmo,
@@ -449,9 +464,13 @@ var PFCompanion = PFCompanion || (function() {
         }) : undefined;
         macroText = toAdd.length>0 ? macroText.replace('&{template:'+rollTemplate+'} ','&{template:'+rollTemplate+'} '+toAdd+' ') : macroText;
         (toAdd.length>0 || !_.isEmpty(duplicateAbility) || !_.isEmpty(duplicateSpell)) ? macroTextObject.set('current',macroText) : undefined;
+        }catch(err){
+            sendError(err);
+        }
     },
     
     initializeSpell = function(character,macroTextObject,attributes,isNPC,rowID){
+        try{
         var rollTemplate,spontaneous,duplicateSpell,toAdd,itemQuery,spellButtonField,
             itemButtonField = '',
             macroText = macroTextObject.get('current'),
@@ -474,9 +493,13 @@ var PFCompanion = PFCompanion || (function() {
         duplicateSpell ? _.each(duplicateSpell,(d)=>{macroText = macroText.replace(d,'')}) : undefined;
         macroText = toAdd.length>0 ? macroText.replace('&{template:'+rollTemplate+'} ','&{template:'+rollTemplate+'} '+toAdd+' ') : macroText;
         macroTextObject.set('current',macroText);
+        }catch(err){
+            sendError(err);
+        }
     },
     
     initializeAbility = function(character,macroTextObject,attributes,isNPC,rowID){
+        try{
         var rollTemplate,duplicate,abilityButtonField,duplicate,hasUses,
             macroText = macroTextObject.get('current'),
             toAdd = '',
@@ -496,9 +519,13 @@ var PFCompanion = PFCompanion || (function() {
         rollTemplate = macroText.match(/(?:&{template:(.*)})/) ? macroText.match(/(?:&{template:([^}]+)})/)[1] : undefined;
         macroText = toAdd!=='' ? macroText.replace('&{template:'+rollTemplate+'} ','&{template:'+rollTemplate+'} '+toAdd+' ') : macroText;
         macroText!=='' ? macroTextObject.set('current',macroText) : undefined;
+        }catch(err){
+            sendError(err);
+        }
     },
     
     initializeItem = function(character,macroTextObject,attributes,isNPC,rowID){
+        try{
         var rollTemplate,duplicate,itemButtonField,
             macroText = macroTextObject.get('current'),
             toAdd = '',
@@ -513,9 +540,13 @@ var PFCompanion = PFCompanion || (function() {
         rollTemplate = macroText.match(/(?:&{template:(.*)})/) ? macroText.match(/(?:&{template:([^}]+)})/)[1] : undefined;
         toAdd = (!macroText.indexOf(itemButtonField)>-1 && itemButtonField) ? itemButtonField : '';
         (toAdd || !_.isEmpty(duplicate)) ? macroTextObject.set('current',macroText.replace('&{template:'+rollTemplate+'} ','&{template:'+rollTemplate+'} '+toAdd+' ')) : undefined;
+        }catch(err){
+            sendError(err);
+        }
     },
     
     checkForCustomTracking = function(description){
+        try{
         var rowID = extractRowID(description.get('name')),
             attributes = findObjs({type:'attribute',characterid:description.get('characterid')}),
             sectionType = description.get('name').match(/weapon|spells|item|ability/) ? description.get('name').match(/weapon|spells|item|ability/)[0] : undefined,
@@ -556,7 +587,7 @@ var PFCompanion = PFCompanion || (function() {
         rollTemplate = macroText.match(/&{template:[^}]+}/) ? macroText.match(/&{template:[^}]+}/)[0] : undefined;
         if(moneyTrack){
             customTrackType = trackObject ? (trackObject.get('name').match(/[CSGP]P/) ? trackObject.get('name').match(/[CSGP]P/)[0] : undefined) : undefined;
-            currentCustomTracking = macroObject ? macroObject.get('current').match(new RegExp('{{miscdescription\d='+moneyCommand[customTrackType]+'}}|{{misctracking\d=.*?(?=}})}}','i')) : undefined;
+            currentCustomTracking = macroObject ? macroObject.get('current').match(new RegExp('{{miscdescription\\d='+moneyCommand[customTrackType]+'}}','i')) : undefined;
             if(!currentCustomTracking){
                 _.some(_.range(1,7),r=>{
                     if(macroText.match(new RegExp('{{misctracking'+r+'=|{{miscdescription'+r+'='))){
@@ -566,6 +597,7 @@ var PFCompanion = PFCompanion || (function() {
                         return true;
                     }
                 });
+                if(!fieldNum){return}
                 customTrackField = '{{misctracking'+fieldNum+'=[**_**](!pfc --resource,misc='+(customTrack.match(/other/i) ? 'other ' : '')+customTrackType+',current=-1|'+description.get('characterid')+')[**&**](!pfc --resource,misc='+(customTrack.match(/other/i) ? 'other ' : '')+customTrackType+',current=+1|'+description.get('characterid')+')[**?**](!pfc --resource,misc='+(customTrack.match(/other/i) ? 'other ' : '')+customTrackType+',current=?'+HE('{')+customTrack+' Adjustment}|'+description.get('characterid')+')}}';
                 customDescField = '{{miscdescription'+fieldNum+'='+moneyCommand[customTrackType]+'}}';
                 macroText = rollTemplate ? macroText.replace(rollTemplate,rollTemplate+' '+customTrackField+' '+customDescField) : macroText;
@@ -574,8 +606,8 @@ var PFCompanion = PFCompanion || (function() {
                 sendChat('Resource Tracking','/w "'+getObj('character',description.get('characterid')).get('name')+'" There is already resource tracking handling for '+customTrack+' in the macro.');
             }
         }else{
-            customTrackType = trackObject ? trackObject.get('name').match(/spells|item|ability|custom/) : undefined;
-            currentCustomTracking = macroObject ? macroObject.get('current').match(new RegExp('{{'+customTrackCommand[customTrackType]+'description\d='+customTrack+'}}|{{'+customTrackCommand[customTrackType]+'tracking\d=.*?(?=}})}}','i')) : undefined;
+            customTrackType = trackObject ? (trackObject.get('name').match(/spells|item|ability|custom/) ? trackObject.get('name').match(/spells|item|ability|custom/)[0] : undefined) : undefined;
+            currentCustomTracking = macroObject ? macroObject.get('current').match(new RegExp('{{'+customTrackCommand[customTrackType]+'description\\d='+customTrack+'}}','i')) : undefined;
             if(!currentCustomTracking){
                 _.some(_.range((customTrackCommand[customTrackType]==='misc' ? 1 : 2),7),r=>{
                     if(macroText.match(new RegExp('{{'+customTrackCommand[customTrackType]+'tracking'+r+'=|{{'+customTrackCommand[customTrackType]+'description'+r+'='))){
@@ -585,17 +617,22 @@ var PFCompanion = PFCompanion || (function() {
                         return true;
                     }
                 });
+                if(!fieldNum){return}
                 customTrackField = '{{'+customTrackCommand[customTrackType]+'tracking'+fieldNum+'=[**_**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current=-1|'+description.get('characterid')+')[**&**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current=+1|'+description.get('characterid')+')[**?**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current=?'+HE('{')+customTrack+' Adjustment}|'+description.get('characterid')+')[**1**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current='+(customTrackCommand[customTrackType]==='spell' ? 0 : 'max')+'|'+description.get('characterid')+')}}';
-                customDescField = '{{'+customTrackCommand[customTrackType]+'description'+fieldNum+'='+(customTrackCommand[customTrackType] === 'misc' ? customTrack : '['+customTrack+' Card](~'+trackObject.get('name').replace('name','roll')+')')+'}}';
+                customDescField = '{{'+customTrackCommand[customTrackType]+'description'+fieldNum+'='+(customTrackCommand[customTrackType] === 'misc' ? customTrack : '['+customTrack+' Card](~'+trackObject.get('characterid')+'|'+trackObject.get('name').replace('name','roll')+')')+'}}';
                 macroText = rollTemplate ? macroText.replace(rollTemplate,rollTemplate+' '+customTrackField+' '+customDescField) : macroText;
                 macroObject.set('current',macroText);
             }else{
                 sendChat('Resource Tracking','/w "'+getObj('character',description.get('characterid')).get('name')+'" There is already resource tracking handling for '+customTrack+' in the macro.');
             }
         }
+        }catch(err){
+            sendError(err);
+        }
     },
     
     deleteAmmoTracking = function(r,attributes){
+        try{
         var macroTextName = _.find(attributes,(a)=>{return a.get('name').indexOf(r+'_name')>0}),
             isNPC = getAttrByName(attributes[0].get('characterid'),'is_npc')==='0' ? false : true,
             macroTextObject,ammoString,macroText;
@@ -608,7 +645,9 @@ var PFCompanion = PFCompanion || (function() {
             macroText = macroText.replace(s,'');
         });
         macroTextObject.set('current',macroText);
-        //(macroTextObject && ammoString) ? macroTextObject.set('current',macroTextObject.get('current').replace(ammoString[0],'')) : undefined;
+        }catch(err){
+            sendError(err);
+        }
     },
 	
 	idToDisplayName = function(id){
@@ -624,6 +663,7 @@ var PFCompanion = PFCompanion || (function() {
     //                  string [Roll20 Attrs] Roll20Char Roll20msg, string
     
     handleAmmoCommand = function(ammo,character,changeCurrent,changeMax){
+        try{
         var attributes=findObjs({type:'attribute',characterid:character.id}),
             ammoNameAttr,rowID,ammoAttr,insufficient;
             
@@ -635,9 +675,13 @@ var PFCompanion = PFCompanion || (function() {
             insufficient = changeCurrent ? setResource(ammoAttr,false,changeCurrent) : 0;
             msgResourceState(character,(getAttrByName(character.id,'is_npc')==='0' ? false : true),rowID,0,((0-insufficient)||0),ammoAttr);
         }
+        }catch(err){
+            sendError(err);
+        }
     },
     
     handleSpellCommand = function(spell,character,spellClass,changeCurrent){
+        try{
         var attributes = findObjs({type:'attribute',characterid:character.id}),
             manualTotal = getAttrByName(character.id,'total_spells_manually')==='0' ? false : true,
             isNPC = getAttrByName(character.id,'is_npc')==='0' ? false : true,
@@ -689,9 +733,13 @@ var PFCompanion = PFCompanion || (function() {
                 }
             }).catch((err)=>{sendError(err)});
         }
+        }catch(err){
+            sendError(err);
+        }
     },
     
     handleAbilityCommand = function(ability,character,abilityClass,changeCurrent,changeMax){
+        try{
         var attributes=findObjs({type:'attribute',characterid:character.id}),
             abilityNameAttr,rowID,abilityAttr,insufficient;
         
@@ -705,9 +753,13 @@ var PFCompanion = PFCompanion || (function() {
                 msgResourceState(character,(getAttrByName(character.id,'is_npc')==='0' ? false : true),rowID,0,((0-i)||0),abilityAttr);
             });
         }
+        }catch(err){
+            sendError(err);
+        }
     },
     
     handleNoteCommand = async function(note,character,changeCurrent){
+        try{
         var attributes = findObjs({type:'attribute',characterid:character.id}),
             isNPC = getAttrByName(character.id,'is_npc')==='0' ? false : true,
             noteNameAttr,rowID,noteAttr,insufficient,money;
@@ -731,8 +783,11 @@ var PFCompanion = PFCompanion || (function() {
         insufficient = insufficient*-1;
         sendChat('Resource Tracking','@{'+character.get('name')+'|'+(!isNPC ? 'PC-whisper':'NPC-whisper')+'} &{template:pf_block} @{'+character.get('name')+'|toggle_accessible_flag} @{'+character.get('name')+'|toggle_rounded_flag} {{color=@{'+character.get('name')+'|rolltemplate_color}}} '
         +'{{subtitle='+(insufficient>0 ? ('``<b>INSUFFICIENT '+note+'</b>``<br>'+insufficient+' short') : '')+'}} {{name=Remaining '+note+'}} {{hasuses=1}} {{qty='+noteAttr.get('current')+'}} {{qty_max='+((parseInt(noteAttr.get('max'))>0 && noteAttr.get('max')!=='') ? noteAttr.get('max') : '-')+'}}'
-        +'{{misctracking1=[**_**](!pfc --resource,misc='+note+',current=-1|'+character.get('name')+')[**&**](!pfc --resource,misc='+note+',current=+1|'+character.get('name')+')[**?**](!pfc --resource,misc='+note+',current=?'+HE('{')+note+' Adjustment}|'+character.get('name')+'})'+(money ? '' : '[**1**](!pfc --resource,misc='+note+',current=max|'+character.get('name')+')')+'}}'
+        +'{{misctracking1=[**_**](!pfc --resource,misc='+note+',current=-1|'+character.id+')[**&**](!pfc --resource,misc='+note+',current=+1|'+character.id+')[**?**](!pfc --resource,misc='+note+',current=?'+HE('{'+note+' Adjustment}')+'|'+character.id+')'+(money ? '' : '[**1**](!pfc --resource,misc='+note+',current=max|'+character.id+')')+'}}'
         +'{{miscdescription1='+note+'}}');
+        }catch(err){
+            sendError(err);
+        }
     },
     
     msgResourceState = function(character,isNPC,resourceId,resourceUsed,insufficient,resourceAttr){
@@ -762,6 +817,7 @@ var PFCompanion = PFCompanion || (function() {
     
     //                  Roll20Attr  Bool string
     setResource = function(attribute,max,change,withWorker,altMax){
+        try{
         var ops = {
                 '+': (a,b)=>a+b,
                 '-': (a,b)=>a-b,
@@ -791,9 +847,13 @@ var PFCompanion = PFCompanion || (function() {
             waiter = Promise.resolve(0);
         }
         return waiter;
+        }catch(err){
+            sendError(err);
+        }
     },
     
     setWhisperState = function(character,pcWhisper,npcWhisper,statsWhisper){
+        try{
         var attributes = findObjs({type:'attribute',characterid:character.id}),
             swapper = {
                 '/w gm':'public',
@@ -813,9 +873,13 @@ var PFCompanion = PFCompanion || (function() {
         pcAttr.set('current',(pcWhisper ? (pcWhisper.toLowerCase()==='private' ? '/w gm' : (pcWhisper.toLowerCase()==='public' ? '&'+'nbsp'+';' : pcAttr.get('current'))) : pcAttr.get('current')));
         npcAttr.set('current',(npcWhisper ? (npcWhisper.toLowerCase()==='private' ? '/w gm' : (npcWhisper.toLowerCase()==='public' ? '&'+'nbsp'+';' : npcAttr.get('current'))) : npcAttr.get('current')));
         statsAttr.set('current',(statsWhisper ? (statsWhisper.toLowerCase()==='private' ? '/w gm' : (statsWhisper.toLowerCase()==='public' ? '&'+'nbsp'+';' : statsAttr.get('current'))) : statsAttr.get('current')));
+        }catch(err){
+            sendError(err);
+        }
     },
     
     handleAmmo = function(ammo,mainAmmo,offAmmo,attributes,character,msg,rollId){
+        try{
         var ammoId,ammoCount,ammoUsed,ammoQuery,insufficient,
             mainAmmoId,offAmmoId,mainCount,offCount,mainName,offName,mainId,offId,attackNames,mainInsuf,offInsuf,mainQuery,offQuery,
             mainUsed=0,
@@ -901,6 +965,9 @@ var PFCompanion = PFCompanion || (function() {
             }
             macroTextObject.set('current',macroText);
         }
+        }catch(err){
+            sendError(err);
+        }
     },
     
     handleHP = function(obj,prev){
@@ -917,25 +984,18 @@ var PFCompanion = PFCompanion || (function() {
                 if(!objCurr && !objMax){
                     return;
                 }
-                log('here');
                 hpDifference = parseInt(prev.current) - objCurr;
-                log(hpDifference);
                 if(hpDifference<=0){
                     log('difference');
                     if(objCurr>objMax){
-                        log(obj);
                         obj.set('current',objMax);
-                        log('post');
-                        log(obj);
                     }
                 }else{
-                    log('temp');
                     tempHP = _.find(attributes,(a)=>{return a.get('name')==='HP-temp'});
                     if(tempHP){
                         hpForTemp = parseInt(tempHP.get('current'))>0 ? Math.min(hpDifference,parseInt(tempHP.get('current'))) : 0;
                         tempHP.set('current',parseInt(tempHP.get('current'))-hpForTemp);
                         obj.set('current',objCurr+hpForTemp);
-                        log(obj);
                     }
                 }
                 break;  
@@ -954,6 +1014,7 @@ var PFCompanion = PFCompanion || (function() {
             markersUsed = [],
             buffName,buffMarker,buffMatch,command;
         if(_.isEmpty(currBuffs)){
+            //need to message that no buffs
             return;
         }
         if(buff){
@@ -1123,9 +1184,6 @@ var PFCompanion = PFCompanion || (function() {
             if(bar1Attr){
                 graphic.set({bar1_link:bar1Attr.id,bar1_value:bar1Attr.get('current'),bar1_max:(bar1Attr.get('max')!=='0' ? bar1Attr.get('max') : '')});
             }
-        }
-        if(state.PFCompanion.defaultToken.bar1Visible==='on'){
-            
         }
         if(state.PFCompanion.defaultToken.bar2Link){
             bar2Attr = _.find(attributes,(a)=>{return a.get('name').toLowerCase() === state.PFCompanion.defaultToken.bar2Link.toLowerCase()});
@@ -1559,12 +1617,15 @@ var PFCompanion = PFCompanion || (function() {
             return;
         }
         character = getObj('character',characterId);
+        if(!character){
+            return;
+        }
         attributes = findObjs({type:'attribute',characterid:characterId});
         rollId = msg.content.match(/(?:\|\|rowid=([^\|]+)\|\|)/) ? msg.content.match(/(?:\|\|rowid=([^\|]+)\|\|)/)[1] : undefined;
         if(!rollId){
             return;
         }
-        if(msg.rolltemplate==='pf_attack'){
+        if(msg.rolltemplate==='pf_attack' && !_.isEmpty(character.get('controlledby'))){
             ammo = msg.content.match(/(?:\|\|item=([^\s][^\|]+))/) ? msg.content.match(/(?:\|\|item=([^\s][^\|]+))/)[1] : undefined;
             mainAmmo = msg.content.match(/(?:\|\|mainitem=([^\s][^\|]+))/) ? msg.content.match(/(?:\|\|mainitem=([^\s][^\|]+))/)[1] : undefined;
             offAmmo = msg.content.match(/(?:\|\|offitem=([^\s][^\|]+))/) ? msg.content.match(/(?:\|\|offitem=([^\s][^\|]+))/)[1] : undefined;
@@ -1575,7 +1636,7 @@ var PFCompanion = PFCompanion || (function() {
     },
     
     showHelp = function(who){
-        sendChat('Pathfinder Companion','/w "'+who+'" <b><u>[Access The Help Sheet](https://journal.roll20.net/character/'+state.PFCompanion.helpLink+')</u></b>');
+        sendChat('Pathfinder Companion','/w "'+who+'" <b><u>[Access The Help Sheet](https://journal.roll20.net/handout/'+state.PFCompanion.helpLink+')</u></b>');
     },
     
     //create token actions for the selected character
@@ -1850,7 +1911,7 @@ var PFCompanion = PFCompanion || (function() {
                     .map((t)=>{return getObj('character',t.get('represents'))})
                     .value();
             }
-            characters = characters? (characters.length>0 ? characters : undefined) : undefined;
+            characters = characters ? (characters.length>0 ? characters : undefined) : undefined;
             switch(cmdDetails.action){
                 case 'help':
                     showHelp(who);
@@ -1864,16 +1925,32 @@ var PFCompanion = PFCompanion || (function() {
                 case 'resource':
                     if(characters && (cmdDetails.details.current || cmdDetails.details.max)){
                         if(cmdDetails.details.misc){
-                            _.each(characters,(c)=>{handleNoteCommand(cmdDetails.details.misc,c,cmdDetails.details.current,cmdDetails.details.max)})
+                            _.each(characters,(c)=>{
+                                if(playerIsGM(msg.playerid) || c.get('controlledby').match(/all/i) || c.get('controlledby').match(msg.playerid)){
+                                    handleNoteCommand(cmdDetails.details.misc,c,cmdDetails.details.current,cmdDetails.details.max);
+                                }
+                            });
                         }
                         if(cmdDetails.details.item){
-                            _.each(characters,(c)=>{handleAmmoCommand(cmdDetails.details.item,c,cmdDetails.details.current,cmdDetails.details.max)});
+                            _.each(characters,(c)=>{
+                                if(playerIsGM(msg.playerid) || c.get('controlledby').match(/all/i) || c.get('controlledby').match(msg.playerid)){
+                                handleAmmoCommand(cmdDetails.details.item,c,cmdDetails.details.current,cmdDetails.details.max);
+                                }
+                            });
                         }
                         if(cmdDetails.details.spell){
-                            _.each(characters,(c)=>{handleSpellCommand(cmdDetails.details.spell,c,cmdDetails.details.class,cmdDetails.details.current)});
+                            _.each(characters,(c)=>{
+                                if(playerIsGM(msg.playerid) || c.get('controlledby').match(/all/i) || c.get('controlledby').match(msg.playerid)){
+                                    handleSpellCommand(cmdDetails.details.spell,c,cmdDetails.details.class,cmdDetails.details.current);
+                                }
+                            });
                         }
                         if(cmdDetails.details.ability){
-                            _.each(characters,(c)=>{handleAbilityCommand(cmdDetails.details.ability,c,cmdDetails.details.class,cmdDetails.details.current,cmdDetails.details.max)});
+                            _.each(characters,(c)=>{
+                                if(playerIsGM(msg.playerid) || c.get('controlledby').match(/all/i) || c.get('controlledby').match(msg.playerid)){
+                                    handleAbilityCommand(cmdDetails.details.ability,c,cmdDetails.details.class,cmdDetails.details.current,cmdDetails.details.max);
+                                }
+                            });
                         }
                     }
                     break;
@@ -1883,6 +1960,9 @@ var PFCompanion = PFCompanion || (function() {
                     }
                     break;
                 case 'parse':
+                    if(!playerIsGM(msg.playerid)){
+                        return;
+                    }
                     var chatText=[],
                         charText=[];
                     _.each(cmdDetails.things,(t)=>{
@@ -1920,13 +2000,17 @@ var PFCompanion = PFCompanion || (function() {
                     break;
                 case 'buffstatus':
                     if(characters){
-                        buffSetup(characters[0],cmdDetails.details.buff,cmdDetails.details.markers,who);
+                        if(playerIsGM(msg.playerid) || characters[0].get('controlledby').match(/all/i) || characters[0].get('controlledby').match(msg.playerid)){
+                            buffSetup(characters[0],cmdDetails.details.buff,cmdDetails.details.markers,who);
+                        }
                     }
                     break;
                 case 'apply':
                     if(characters && (cmdDetails.details.condition || cmdDetails.details.buff)){
                         _.each(characters,(c)=>{
-                            applyConditions(c,cmdDetails.details.condition,cmdDetails.details.buff,cmdDetails.details.swap,cmdDetails.details.remove,cmdDetails.details.rounds);
+                            if(playerIsGM(msg.playerid) || c.get('controlledby').match(/all/i) || c.get('controlledby').match(msg.playerid)){
+                                applyConditions(c,cmdDetails.details.condition,cmdDetails.details.buff,cmdDetails.details.swap,cmdDetails.details.remove,cmdDetails.details.rounds);
+                            }
                         });
                     }else{
                         //handling for improper command
@@ -1934,21 +2018,14 @@ var PFCompanion = PFCompanion || (function() {
                     break;
                 case 'whisper':
                     _.each(characters,(c)=>{
-                        setWhisperState(c,cmdDetails.details.pc,cmdDetails.details.npc,cmdDetails.details.stats);
+                        if(playerIsGM(msg.playerid) || c.get('controlledby').match(/all/i) || c.get('controlledby').match(msg.playerid)){
+                            setWhisperState(c,cmdDetails.details.pc,cmdDetails.details.npc,cmdDetails.details.stats);
+                        }
                     });
                     break;
                 case 'rest':
                     break;
                 case 'TAS':
-                    characters = cmdDetails.things.length>0 ? _.reject(_.map(cmdDetails.things,(t)=>{
-                            return getObj('character',t);
-                        }),(m)=>{
-                            return _.isUndefined(m);
-                        }) : (msg.selected ? _.reject(_.map(msg.selected,(t)=>{
-                            return getObj('character',getObj('graphic',t._id).get('represents'));
-                        }),(m)=>{
-                            return _.isUndefined(m);
-                        }) : undefined);
                     if(characters){
                         if(characters.length!==cmdDetails.things.length){
                             if(_.some(cmdDetails.things,(t)=>{return t==='ALL'})){
@@ -1970,7 +2047,9 @@ var PFCompanion = PFCompanion || (function() {
                             }
                         }
                         _.each(characters,(c)=>{
-                            tokenActionMaker(c,cmdDetails.details.limit,cmdDetails.details.ignore);
+                            if(playerIsGM(msg.playerid) || c.get('controlledby').match(/all/i) || c.get('controlledby').match(msg.playerid)){
+                                tokenActionMaker(c,cmdDetails.details.limit,cmdDetails.details.ignore);
+                            }
                         });
                     }else{
                         showHelp(who);
@@ -2027,7 +2106,7 @@ var PFCompanion = PFCompanion || (function() {
                 (state.PFCompanion.ResourceTrack==='on' || state.PFCompanion.TAS === 'auto') ? _.defer(initializeCharacter,obj) : undefined;
                 break;
             case 'change':
-                if(state.PFCompanion.TAS==='auto'){
+                if(state.PFCompanion.TAS==='auto' && obj.get('name')!==prev.name){
                     _.each(findObjs({type:'ability',characterid:obj.id}),(a)=>{
                         if(_.some(npcAbilities,(n)=>{return a.get('description')===n})){
                             a.remove();
@@ -2110,8 +2189,10 @@ var PFCompanion = PFCompanion || (function() {
             name = oTurn[0].custom.match(nameMatch) ? oTurn[0].custom.match(nameMatch)[1] : undefined;
             character = name ? _.find(findObjs({type:'character',name:name})) : undefined;
             if((buff || condition) && parseInt(oTurn[0].pr)===depth && character){
-                applyConditions(character,condition,buff,undefined,'remove');
-                _.defer(campaignHandler,obj,'change',newPrev,1);
+                if(!_.isEmpty(character.get('controlledby'))){
+                    applyConditions(character,condition,buff,undefined,'remove');
+                    _.defer(campaignHandler,obj,'change',newPrev,1);
+                }
             }
         }
         }catch(err){
@@ -2128,11 +2209,12 @@ var PFCompanion = PFCompanion || (function() {
                     if(obj.get('represents')!==prev.represents){
                         mapBars(obj,getObj('character',obj.get('represents')));
                     }else if(!_.some(ignoreChange,(i)=>{return (obj.get('bar'+i+'_value')!==prev['bar'+i+'_value'] || obj.get('bar'+i+'_max')!==prev['bar'+i+'_max'])})){
-                        log('here');
                         character = getObj('character',obj.get('represents'));
                         if(character){
-                            character ? setDefaultTokenForCharacter(character, obj) : undefined;
-                            updateAllTokens(character);
+                            if(!_.isEmpty(character.get('controlledby'))){
+                                character ? setDefaultTokenForCharacter(character, obj) : undefined;
+                                updateAllTokens(character);
+                            }
                         }
                     }
                 }

@@ -13,9 +13,10 @@ Known issues
     1. DO NOT attempt to parse Lucifer, Prince of Darkness from pfsrd. He is just too large, and will almost certainly crash your script environment by triggering an infinite loop error.
     1. While the script supports importing of multiple statblocks with a single command, limit how many creatures you import at a given time as the time it takes to import increases non-linearly (especially if they cast spells).
 1. I would recommend waiting to install the script until I upload the next version of the beta as some of the syntax for how resource tracking is handled will be changed.
+____________
 
 Companion API Script vPrototype 0.085
-____________
+============
 Configuration Options
 ------------
 1. Automatically create token actions for macro menus: Enabling this will automatically create the indicated abilities for all PCs and NPCs as they are created or made into NPCs. Enabling the setting adds a menu where you can specify what menus should be created for all characters categorized by PC or NPC.

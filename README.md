@@ -15,7 +15,7 @@ Known issues
 1. I would recommend waiting to install the script until I upload the next version of the beta as some of the syntax for how resource tracking is handled will be changed.
 
 Companion API Script vPrototype 0.085
-
+____________
 Configuration Options
 ------------
 1. Automatically create token actions for macro menus: Enabling this will automatically create the indicated abilities for all PCs and NPCs as they are created or made into NPCs. Enabling the setting adds a menu where you can specify what menus should be created for all characters categorized by PC or NPC.

@@ -26,7 +26,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.085',
         sheetVersion = [1.53,1.52,1.51],
-        lastUpdate = 1495069318,
+        lastUpdate = 1495070366,
         schemaVersion = 0.085,
         defaults = {
             css: {
@@ -1908,6 +1908,7 @@ var PFCompanion = PFCompanion || (function() {
             }else if(msg.selected){
                 characters = _.chain(msg.selected)
                     .map((s)=>{return getObj('graphic',s._id)})
+                    .reject((c)=>{return _.isUndefined(s)})
                     .map((t)=>{return getObj('character',t.get('represents'))})
                     .value();
             }

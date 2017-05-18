@@ -26,7 +26,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.085',
         sheetVersion = [1.53,1.52,1.51],
-        lastUpdate = 1495056388,
+        lastUpdate = 1495069318,
         schemaVersion = 0.085,
         defaults = {
             css: {
@@ -2184,6 +2184,9 @@ var PFCompanion = PFCompanion || (function() {
         depth = depth || 0;
         if(oTurn!==pTurn && Campaign().get('initiativepage') && !_.isEmpty(oTurn)){
             oTurn = JSON.parse(oTurn);
+            if(_.isEmpty(oTurn)){
+                return;
+            }
             buff = oTurn[0].custom.match(buffMatch) ? oTurn[0].custom.match(buffMatch)[1] : undefined;
             condition = oTurn[0].custom.match(conditionMatch) ? oTurn[0].custom.match(conditionMatch)[1] : undefined;
             name = oTurn[0].custom.match(nameMatch) ? oTurn[0].custom.match(nameMatch)[1] : undefined;

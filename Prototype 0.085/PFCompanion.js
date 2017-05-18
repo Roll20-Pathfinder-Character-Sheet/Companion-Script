@@ -1908,11 +1908,12 @@ var PFCompanion = PFCompanion || (function() {
             }else if(msg.selected){
                 characters = _.chain(msg.selected)
                     .map((s)=>{return getObj('graphic',s._id)})
-                    .reject((c)=>{return _.isUndefined(s)})
+                    .reject((c)=>{return _.isUndefined(c)})
                     .map((t)=>{return getObj('character',t.get('represents'))})
+                    .reject((ch)=>{return _.isUndefined(ch)})
                     .value();
             }
-            characters = characters ? (characters.length>0 ? characters : undefined) : undefined;
+            characters = !_.isEmpty(characters) ? characters : undefined;
             switch(cmdDetails.action){
                 case 'help':
                     showHelp(who);

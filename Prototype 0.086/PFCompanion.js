@@ -26,7 +26,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.086',
         sheetVersion = [1.53,1.52,1.51],
-        lastUpdate = 1495168891,
+        lastUpdate = 1495207478,
         schemaVersion = 0.086,
         defaults = {
             css: {

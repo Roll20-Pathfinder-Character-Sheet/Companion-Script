@@ -114,7 +114,6 @@ var PFCompanion = PFCompanion || (function() {
         if( ! _.has(state,'PFCompanion') || state.PFCompanion.version !== schemaVersion) {
             log('  > Updating Schema to v'+schemaVersion+' <');
             log('  > Cleaning out old resource tracking syntax <');
-            cleanUpMacros();
             state.PFCompanion = state.PFCompanion || {};
             state.PFCompanion.version = schemaVersion;
             [/skill$/,/skillc$/,/checks$/,/defense$/,/attack$/,/ability$/,/item$/,/initiative$/],
@@ -147,30 +146,6 @@ var PFCompanion = PFCompanion || (function() {
 		generateHelp();
 		buildTemplates();
 	},
-	
-    cleanUpMacros = function(){
-        var macros = _.filter(findObjs({type:'attribute'}),(a)=>{return a.get('name').match(/repeating_(?:spells|weapon|item|ability)_\-.*?(?=_)_(?:npc-)?macro-text/)}),
-            macroText,outofdate,
-            macroWorker;
-        macroWorker = () =>{
-            let m=macros.shift();
-            macroText = m.get('current');
-            outofdate = macroText.match(/{{.*?(?= Tracking) Tracking=.*?(?=}})}}|{{\[[^\]]+ Spell Card\]\(~[^\)]+\)=\[\*\*-\*\*\]\([^\)]+\)\[\*\*\+\*\*\]\([^\)]+\)\[\*\*\?\*\*\]\([^\)]+\)}}|{{\[[^\]]+ Description\]\(~[^\)]+\)=\[\*\*-\*\*\]\([^\)]+\)\[\*\*\+\*\*\]\([^\)]+\)\[\*\*\?\*\*\]\([^\)]+\)}}|{{Spell Tracking=\[\*\*-\*\*\]\([^\)]+\)\[\*\*\+\*\*\]\([^\)]+\)\[\*\*\?\*\*\]\([^\)]+\)}}|{{Ability Tracking=\[\*\*-\*\*\]\([^\)]+\)\[\*\*\+\*\*\]\([^\)]+\)\[\*\*\?\*\*\]\([^\)]+\)}}|{{Inventory Tracking=\[\*\*-\*\*\]\([^\)]+\)\[\*\*\+\*\*\]\([^\)]+\)\[\*\*\?\*\*\]\([^\)]+\)}}/g);
-            _.each(outofdate,(ood)=>{macroText.replace(ood,'')});
-            m.set('current',macroText);
-            if(!_.isEmpty(macros)){
-                _.defer(macroWorker);
-            }else{
-                log('  > Old resource tracking syntax cleaned out <');
-                if(state.PFCompanion.ResourceTrack==='on'){
-                    _.defer(initialize);
-                }
-            }
-        };
-        if(!_.isEmpty(macros)){
-            macroWorker();
-        }
-    },
 	
     sendError = function(err){
         var stackToSend = err.stack ? (err.stack.match(/([^\n]+\n[^\n]+)/) ? err.stack.match(/([^\n]+\n[^\n]+)/)[1].replace(/\n/g,'<br>') : 'Unable to parse error') : 'Unable to parse error';

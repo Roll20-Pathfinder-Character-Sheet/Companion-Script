@@ -26,7 +26,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.086',
         sheetVersion = [1.53,1.52,1.51],
-        lastUpdate = 1495207478,
+        lastUpdate = 1495213420,
         schemaVersion = 0.086,
         defaults = {
             css: {
@@ -319,24 +319,53 @@ var PFCompanion = PFCompanion || (function() {
     initializeCharacter = function(c){
         try{
         var attributes = findObjs({type:'attribute',characterid:c.id}),
-            rollIds,rowID;
-            
+            rollIds,rowID,
+            start=_.now(),
+            rowWorker = () =>{
+                try{
+                    var r = rollIds.shift();
+                    rowID = r.get('name').match(/(?:_(-[^_]+)_name)/);
+                    rowID = rowID ? rowID[1] : undefined;
+                    rowID ? initializeRepeatingResourceTracking(rowID,attributes) : undefined;
+                    if(_.isEmpty(rollIds)){
+                        return 'Rows Completed';
+                    }else{
+                        if((_.now()-start)/1000 >=20){
+                            return new Promise((resolve,reject)=>{
+                                _.defer((i)=>{
+                                    start = _.now();
+                                    resolve(rowWorker())
+                                });
+                            });
+                        }else{
+                            return rowWorker();
+                        }
+                    }
+                }catch(err){
+                    sendError(err);
+                }
+            };
         return new Promise((resolve,reject)=>{
             _.defer((a,chr)=>{
-                if(state.PFCompanion.TAS === 'auto'){
-                    tokenActionMaker(chr);
+                try{
+                    if(state.PFCompanion.TAS === 'auto'){
+                        tokenActionMaker(chr);
+                    }
+                    if(state.PFCompanion.ResourceTrack==='on'){
+                        rollIds = _.filter(attributes,(a)=>{
+                            return a.get('name').indexOf('repeating_')===0 && a.get('name').match(/(?:_([^_]+)_name)/);
+                        });
+                        if(!_.isEmpty(rollIds)){
+                            resolve(rowWorker());
+                        }else{
+                            resolve('initialized');
+                        }
+                    }else{
+                        resolve('initialized');
+                    }
+                }catch(err){
+                    sendError(err);
                 }
-                if(state.PFCompanion.ResourceTrack==='on'){
-                    rollIds = _.filter(attributes,(a)=>{
-                        return a.get('name').indexOf('repeating_')===0 && a.get('name').match(/(?:_([^_]+)_name)/);
-                    });
-                    _.each(rollIds,(r)=>{
-                        rowID = r.get('name').match(/(?:_(-[^_]+)_name)/);
-                        rowID = rowID ? rowID[1] : undefined;
-                        rowID ? initializeRepeatingResourceTracking(rowID,attributes) : undefined;
-                    });
-                }
-                resolve('initialized');
             },attributes,c);
         });
         }catch(err){

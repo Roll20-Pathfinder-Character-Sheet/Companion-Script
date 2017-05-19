@@ -26,7 +26,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.086',
         sheetVersion = [1.53,1.52,1.51],
-        lastUpdate = 1495166141,
+        lastUpdate = 1495168891,
         schemaVersion = 0.086,
         defaults = {
             css: {
@@ -1791,7 +1791,7 @@ var PFCompanion = PFCompanion || (function() {
             createKeys=['skill','skillc','checks','defense','fort','will','ref','attack','ability','item','spellbook','initiative'],
             spell2,spell3;
             
-        toCreate = toCreate.split(/\s+/) || [];
+        toCreate = !_.isEmpty(toCreate) ? toCreate.split(/\s+/) : [];
         if(spells === '1'){
             state.PFCompanion.npcToCreate['spellbook']==='on' ? npcAbilities.push('NPC-spellbook-0') : undefined;
             state.PFCompanion.toCreate['spellbook']==='on' ? pcAbilities.push('spellbook-0') : undefined;

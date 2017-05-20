@@ -25,8 +25,8 @@ var PFCompanion = PFCompanion || (function() {
     'use strict';
 
     var version = 'Prototype 0.087',
-        sheetVersion = [1.53,1.52,1.51],
-        lastUpdate = 1495292110,
+        sheetVersion = [1.6,1.53,1.52,1.51],
+        lastUpdate = 1495301678,
         schemaVersion = 0.087,
         defaults = {
             css: {
@@ -49,6 +49,7 @@ var PFCompanion = PFCompanion || (function() {
         templates = {},
         mediumLogo = 'https://s3.amazonaws.com/files.d20.io/images/32553319/jo0tVb8t2Ru02ZoAx_2Trw/max.png?1493959120',
         largeLogo = 'https://s3.amazonaws.com/files.d20.io/images/32553318/5tI0CxKAK5nh_C6Fb-dYuw/max.png?1493959115',
+        currSheet=0,
         sheetCompat,
 
     ch = function (c) {
@@ -105,7 +106,12 @@ var PFCompanion = PFCompanion || (function() {
     }()),
     
     checkInstall = function(){
-        if(!_.find(findObjs({type:'attribute',name:'PFSheet_Version'}),(a)=>{return _.some(sheetVersion,(sv)=>{return ''+a.get('current')===''+sv})})){
+        _.each(findObjs({type:'attribute',name:'PFSheet_Version'}),(a)=>{
+            if(currSheet<parseFloat(a.get('current'))){
+                currSheet = parseFloat(a.get('current'));
+            }
+        });
+        if(_.indexOf(sheetVersion,currSheet)===-1){
             sendChat('Pathfinder Companion','This version of the Neceros Pathfinder Sheet Companion is only compatible with sheet version '+sheetVersion
             +'. You do not appear to be using the correct Neceros Pathfinder sheet, please switch to the appropriate sheet, or the companion script for your '
             +'sheet. The script has not initialized and will not respond to events or commands.',null,{noarchive:true});
@@ -2406,7 +2412,17 @@ var PFCompanion = PFCompanion || (function() {
     attributeHandler = function(obj,event,prev){
         try{
         if(!sheetCompat){
-            return;
+            if(obj.get('name')==='PFSheet_Version'){
+                if(currSheet<parseFloat(obj.get('current'))){
+                    currSheet = parseFloat(obj.get('current'));
+                    if(_.indexOf(sheetVersion,currSheet)!==-1){
+                        sheetCompat=true;
+                    }
+                }
+            }
+            if(!sheetCompat){
+                return;
+            }
         }
         switch(event){
             case 'change':
@@ -2477,25 +2493,49 @@ var PFCompanion = PFCompanion || (function() {
             buffMatch = /Buff: (.*)/,
             nameMatch = /(.*(?= (?:Condition:|Buff:))) (?:Condition:|Buff:) /,
             newPrev=JSON.stringify(obj),
-            buff,condition,character,name;
+            buff,condition,character,name,removed;
             
         depth = depth || 0;
         if(oTurn!==pTurn && Campaign().get('initiativepage') && !_.isEmpty(oTurn)){
             oTurn = JSON.parse(oTurn);
+            pTurn = !_.isEmpty(pTurn) ? JSON.parse(pTurn) : undefined;
             if(_.isEmpty(oTurn)){
-                return;
-            }
-            buff = oTurn[0].custom.match(buffMatch) ? oTurn[0].custom.match(buffMatch)[1] : undefined;
-            condition = oTurn[0].custom.match(conditionMatch) ? oTurn[0].custom.match(conditionMatch)[1] : undefined;
-            name = oTurn[0].custom.match(nameMatch) ? oTurn[0].custom.match(nameMatch)[1] : undefined;
-            character = name ? _.find(findObjs({type:'character',name:name})) : undefined;
-            if((buff || condition) && parseInt(oTurn[0].pr)===depth && character){
-                if(!_.isEmpty(character.get('controlledby'))){
-                    applyConditions(character,condition,buff,undefined,'remove');
-                    _.defer(campaignHandler,obj,'change',newPrev,1);
+                removed = pTurn;
+                if(!removed){
+                    return;
                 }
             }
-        }
+            removed = !_.isEmpty(pTurn) ? _.reject(pTurn,(p)=>{
+                return _.some(oTurn,(o)=>{
+                    return _.isEqual(o,p);
+                });
+            }) : undefined;
+            removed = _.isEmpty(removed) ? undefined : removed;
+            if(removed){
+                _.each(removed,(r)=>{
+                    buff = r.custom.match(buffMatch) ? r.custom.match(buffMatch)[1] : undefined;
+                    condition = r.custom.match(conditionMatch) ? r.custom.match(conditionMatch)[1] : undefined;
+                    name = r.custom.match(nameMatch) ? r.custom.match(nameMatch)[1] : undefined;
+                    character = name ? _.find(findObjs({type:'character',name:name})) : undefined;
+                    if((buff || condition) && character){
+                        if(!_.isEmpty(character.get('controlledby'))){
+                            applyConditions(character,condition,buff,undefined,'remove');
+                        }
+                    }
+                });
+            }else{
+                buff = oTurn[0].custom.match(buffMatch) ? oTurn[0].custom.match(buffMatch)[1] : undefined;
+                condition = oTurn[0].custom.match(conditionMatch) ? oTurn[0].custom.match(conditionMatch)[1] : undefined;
+                name = oTurn[0].custom.match(nameMatch) ? oTurn[0].custom.match(nameMatch)[1] : undefined;
+                character = name ? _.find(findObjs({type:'character',name:name})) : undefined;
+                if((buff || condition) && parseInt(oTurn[0].pr)===depth && character){
+                    if(!_.isEmpty(character.get('controlledby'))){
+                        applyConditions(character,condition,buff,undefined,'remove');
+                        campaignHandler(obj,'change',newPrev,1);
+                    }
+                }
+            }
+        } 
         }catch(err){
             sendError(err);
         }
@@ -2503,7 +2543,10 @@ var PFCompanion = PFCompanion || (function() {
     
     graphicHandler = function(obj,event,prev){
         try{
-            var character,
+            var character,added,removed,buffMatch,conditionKeys,
+                buffMarkers=[],
+                conditionMarkers=[],
+                updated=false,
                 ignoreChange=[1,2,3];
             if(event='change'){
                 if(!_.isEmpty(obj.get('represents')) && obj.get('left')===prev.left && obj.get('top')===prev.top){
@@ -2513,8 +2556,52 @@ var PFCompanion = PFCompanion || (function() {
                         character = getObj('character',obj.get('represents'));
                         if(character){
                             if(!_.isEmpty(character.get('controlledby'))){
-                                character ? setDefaultTokenForCharacter(character, obj) : undefined;
-                                updateAllTokens(character);
+                                if(obj.get('statusmarkers')!==prev.statusmarkers){
+                                    removed = !_.isEmpty(prev.statusmarkers) ? _.reject(prev.statusmarkers.split(','),(p)=>{
+                                        return _.some(obj.get('statusmarkers').split(','),(o)=>{
+                                            return o===p;
+                                        });
+                                    }) : undefined;
+                                    added = !_.isEmpty(obj.get('statusmarkers')) ? _.reject(obj.get('statusmarkers').split(','),(p)=>{
+                                        return _.some(prev.statusmarkers.split(','),(o)=>{
+                                            return o===p;
+                                        });
+                                    }) : undefined;
+                                    _.each(findObjs({type:'attribute',characterid:character.id}),(a)=>{
+                                        if(a.get('name').match(/repeating_buff_-[^_]+_buff-name/)){
+                                            buffMatch = a.get('current').match(/(.*(?=\s+\|\|))\s+\|\|\s+(.*)/);
+                                            if(buffMatch){
+                                                buffMarkers.push({'name':buffMatch[1],'marker':buffMatch[2]});
+                                            }
+                                        }
+                                    });
+                                    conditionKeys = _.keys(state.PFCompanion.markers);
+                                    _.each(conditionKeys,(ck)=>{
+                                        conditionMarkers.push({'name':ck,'marker':state.PFCompanion.markers[ck]});
+                                    });
+                                    _.each(buffMarkers,(b)=>{
+                                        if(_.indexOf(removed,b.marker)!==-1){
+                                            updated=true;
+                                            applyConditions(character,undefined,b.name,undefined,'remove');
+                                        }else if(_.indexOf(added,b.marker)!==-1){
+                                            updated=true;
+                                            applyConditions(character,undefined,b.name);
+                                        }
+                                    });
+                                    _.each(conditionMarkers,(c)=>{
+                                        if(_.indexOf(removed,c.marker)!==-1){
+                                            updated=true;
+                                            applyConditions(character,c.name,null,undefined,'remove');
+                                        }else if(_.indexOf(added,c.marker)!==-1){
+                                            updated=true;
+                                            applyConditions(character,c.name);
+                                        }
+                                    })
+                                }
+                                if(!updated){
+                                    character ? setDefaultTokenForCharacter(character, obj) : undefined;
+                                    updateAllTokens(character);
+                                }
                             }
                         }
                     }

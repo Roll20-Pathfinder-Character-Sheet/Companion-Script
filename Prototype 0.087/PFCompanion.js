@@ -26,7 +26,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.087',
         sheetVersion = [1.53,1.52,1.51],
-        lastUpdate = 1495290911,
+        lastUpdate = 1495292110,
         schemaVersion = 0.087,
         defaults = {
             css: {
@@ -819,7 +819,7 @@ var PFCompanion = PFCompanion || (function() {
         try{
         var attributes = findObjs({type:'attribute',characterid:character.id}),
             isNPC = getAttrByName(character.id,'is_npc')==='0' ? false : true,
-            noteNameAttr,rowID,noteAttr,insufficient,money;
+            noteNameAttr,rowID,noteAttr,insufficient,money,altMax,spellClass;
             
         if(!note.match(/[GSCP]P|spell\s*points/i)){
             noteNameAttr = _.find(attributes,(a)=>{return a.get('current')===note && a.get('name').match(/custom[ac]\d+-name/)});
@@ -835,15 +835,18 @@ var PFCompanion = PFCompanion || (function() {
         }else if(note.match(/spell\s*points/i)){
             noteNameAttr = _.find(attributes,(a)=>{return a.get('name').match(/spellclass-[0-2]-name/) && a.get('current')===note.replace(/\s+Spell\s*Points/i,'')});
             noteAttr = noteNameAttr ? _.find(attributes,(a)=>{return a.get('name')===noteNameAttr.get('name').replace('name','spell-points-per-day')}) : undefined;
-            log(noteAttr);
             if(!noteAttr){
                 return;
+            }
+            if((''+changeCurrent).match(/max/i)){
+                spellClass = noteNameAttr.get('name').match(/spellclass-([0-2])-name/)[1];
+                altMax = parseInt(getAttrByName(character.id,'spellclass-'+spellClass+'-spell-points-class'))+parseInt(getAttrByName(character.id,'spellclass-'+spellClass+'-spell-points-bonus'))+parseInt(getAttrByName(character.id,'spellclass-'+spellClass+'-spell-points-misc'));
             }
         }
         if(!noteAttr){
             return;
         }
-        insufficient = changeCurrent ? await setResource(noteAttr,false,changeCurrent) : 0;
+        insufficient = changeCurrent ? await setResource(noteAttr,false,changeCurrent,null,altMax) : 0;
         insufficient = insufficient*-1;
         sendChat('Resource Tracking','@{'+character.get('name')+'|'+(!isNPC ? 'PC-whisper':'NPC-whisper')+'} &{template:pf_block} @{'+character.get('name')+'|toggle_accessible_flag} @{'+character.get('name')+'|toggle_rounded_flag} {{color=@{'+character.get('name')+'|rolltemplate_color}}} '
         +'{{subtitle='+(insufficient>0 ? ('``<b>INSUFFICIENT '+note+'</b>``<br>'+insufficient+' short') : '')+'}} {{name=Remaining '+note+'}} {{hasuses=1}} {{qty='+noteAttr.get('current')+'}} {{qty_max='+((parseInt(noteAttr.get('max'))>0 && noteAttr.get('max')!=='') ? noteAttr.get('max') : '-')+'}}'
@@ -892,7 +895,6 @@ var PFCompanion = PFCompanion || (function() {
             nVal,returnValue,maxValue,spellClass,waiter,promiseTest;
         if((''+change).toLowerCase()==='max'){
             nVal = altMax ? altMax : attribute.get('max');
-            log(nVal);
         }else if(adj){
             adj[2]=parseInt(adj[2],10);
             adj[1]=adj[1]||'=';

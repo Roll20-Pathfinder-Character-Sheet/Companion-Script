@@ -26,7 +26,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.087',
         sheetVersion = [1.53,1.52,1.51],
-        lastUpdate = 1495238956,
+        lastUpdate = 1495259286,
         schemaVersion = 0.087,
         defaults = {
             css: {
@@ -113,8 +113,10 @@ var PFCompanion = PFCompanion || (function() {
         log('-=> Pathfinder Companion v'+version+' || Compatible with Sheet Version '+sheetVersion+' <=-  ['+(new Date(lastUpdate*1000))+']');
         if( ! _.has(state,'PFCompanion') || state.PFCompanion.version !== schemaVersion) {
             log('  > Updating Schema to v'+schemaVersion+' <');
+            log('  > Cleaning out old resource tracking syntax <');
             state.PFCompanion = state.PFCompanion || {};
             state.PFCompanion.version = schemaVersion;
+            [/skill$/,/skillc$/,/checks$/,/defense$/,/attack$/,/ability$/,/item$/,/initiative$/],
             state.PFCompanion.toCreate = state.PFCompanion.toCreate || {};
             state.PFCompanion.npcToCreate = state.PFCompanion.npcToCreate || {};
             state.PFCompanion.markers = state.PFCompanion.markers || {
@@ -556,7 +558,7 @@ var PFCompanion = PFCompanion || (function() {
             attributes = findObjs({type:'attribute',characterid:description.get('characterid')}),
             sectionType = description.get('name').match(/weapon|spells|item|ability/) ? description.get('name').match(/weapon|spells|item|ability/)[0] : undefined,
             isNPC = getAttrByName(description.get('characterid'),'is_npc')==='0' ? false: true,
-            customTrack = description.get('current').match(/\s*%%[^%]+%%\s*/),
+            ct = description.get('current').match(/\s*%%[^%]+%%\s*/g),
             customTrackCommand = {
                 'item':'item',
                 'spells':'spell',
@@ -570,67 +572,113 @@ var PFCompanion = PFCompanion || (function() {
                 'PP':'Platinum'
             },
             money = ['gold|GP','copper|CP','silver|SP','platinum|PP'],
+            spellPointsClass,spellClass,
             fieldNum=2,
-            macroObject,macroText,currentCustomTracking,customTrackType,trackObject,customTrackField,customDescField,rollTemplate,moneyTrack;
+            macroObject,macroText,currentCustomTracking,customTrackType,trackObject,customTrackField,customDescField,rollTemplate,moneyTrack,ctWorker;
             
-        if(!customTrack){
+        if(!ct){
             return;
         }
-        customTrack = customTrack[0];
-        description.set('current',description.get('current').replace(customTrack,'').trim());
-        customTrack = customTrack.replace(/%/g,'').trim();
-        trackObject = !_.some(money,(m)=>{
-            if(customTrack.match(new RegExp(m,'i'))){
-                trackObject = _.find(attributes,(a)=>{return a.get('name')===(customTrack.match(/other/i) ? 'other-' : '')+m.replace(/[^\|]+\|/,'')});
-                return moneyTrack = true;
+        ctWorker = ()=>{
+            let customTrack = ct.shift();
+            description.set('current',description.get('current').replace(customTrack,'').trim());
+            customTrack = customTrack.replace(/%/g,'').trim();
+            if(customTrack.match(/spell\s*points/i)){
+                spellPointsClass = customTrack.match(/(.*?(?=\s+spell\s*points))\s+spell\s*points/);
+                if(!spellPointsClass){return}
+                spellPointsClass = spellPointsClass[1];
+                if(spellPointsClass.match(/^[0-2]$/)){
+                    trackObject = _.find(attributes,(a)=>{return a.get('name')==='spellclass-'+spellPointsClass+'-spell-points-per-day'});
+                    spellClass = trackObject ? getAttrByName(trackObject.get('characterid'),trackObject.get('name').replace('spell-points-per-day','name')) : undefined;
+                }else{
+                    spellClass = _.find(attributes,(a)=>{return a.get('name').match(/spellclass-[0-2]-name/)&&a.get('current')===spellPointsClass});
+                    trackObject = spellClass ? _.find(attributes,(a)=>{return a.get('name')===spellClass.get('name').replace('name','spell-points-per-day')}) : undefined;
+                    spellClass = spellClass ? spellClass.get('current') : undefined;
+                }
+                if(!trackObject){return}
+                macroObject =  _.find(attributes,(a)=>{return a.get('name').toLowerCase()===description.get('name').toLowerCase().replace((sectionType==='weapon' ? 'notes' : 'description'),((isNPC && sectionType!=='ability') ? 'npc-macro-text' : 'macro-text'))});
+                macroText = macroObject.get('current');
+                rollTemplate = macroText.match(/&{template:[^}]+}/) ? macroText.match(/&{template:[^}]+}/)[0] : undefined;
+                currentCustomTracking = macroText ? macroText.match(new RegExp('{{miscdescription\\d='+spellClass+' Spell Points}}','i')) : undefined;
+                if(!currentCustomTracking){
+                    _.some(_.range(1,7),r=>{
+                        if(macroText.match(new RegExp('{{misctracking'+r+'=|{{miscdescription'+r+'='))){
+                            return false;
+                        }else{
+                            fieldNum=r;
+                            return true;
+                        }
+                    });
+                    if(!fieldNum){return}
+                    customTrackField = '{{misctracking'+fieldNum+'=[**_**](!pfc --resource,misc='+spellClass+' Spell Points,current=-1|'+description.get('characterid')+')[**&**](!pfc --resource,misc='+spellClass+' Spell Points,current=+1|'+description.get('characterid')+')[**?**](!pfc --resource,misc='+spellClass+' Spell Points,current=?'+HE('{')+spellClass+' Spell Points Adjustment}|'+description.get('characterid')+')[**1**](!pfc --resource,misc='+spellClass+' Spell Points,current=max|'+description.get('characterid')+')}}';
+                    customDescField = '{{miscdescription'+fieldNum+'='+spellClass+' Spell Points}}';
+                    macroText = rollTemplate ? macroText.replace(rollTemplate,rollTemplate+' '+customTrackField+' '+customDescField) : macroText;
+                    macroObject.set('current',macroText);
+                }else{
+                    sendChat('Resource Tracking','/w "'+getObj('character',description.get('characterid')).get('name')+'" There is already resource tracking handling for '+customTrack+' in the macro.');
+                }
             }else{
-                return false;
-            }
-        }) ? _.find(attributes,(a)=>{return a.get('current')===customTrack && a.get('name').match(/repeating_.+_-.+_name|custom[ac]\d+-name/)}) : trackObject;
-        macroObject =  _.find(attributes,(a)=>{return a.get('name').toLowerCase()===description.get('name').toLowerCase().replace((sectionType==='weapon' ? 'notes' : 'description'),((isNPC && sectionType!=='ability') ? 'npc-macro-text' : 'macro-text'))});
-        macroText = macroObject.get('current');
-        rollTemplate = macroText.match(/&{template:[^}]+}/) ? macroText.match(/&{template:[^}]+}/)[0] : undefined;
-        if(moneyTrack){
-            customTrackType = trackObject ? (trackObject.get('name').match(/[CSGP]P/) ? trackObject.get('name').match(/[CSGP]P/)[0] : undefined) : undefined;
-            currentCustomTracking = macroObject ? macroObject.get('current').match(new RegExp('{{miscdescription\\d='+moneyCommand[customTrackType]+'}}','i')) : undefined;
-            if(!currentCustomTracking){
-                _.some(_.range(1,7),r=>{
-                    if(macroText.match(new RegExp('{{misctracking'+r+'=|{{miscdescription'+r+'='))){
-                        return false;
+                trackObject = !_.some(money,(m)=>{
+                    if(customTrack.match(new RegExp(m,'i'))){
+                        trackObject = _.find(attributes,(a)=>{return a.get('name')===(customTrack.match(/other/i) ? 'other-' : '')+m.replace(/[^\|]+\|/,'')});
+                        return moneyTrack = true;
                     }else{
-                        fieldNum=r;
-                        return true;
-                    }
-                });
-                if(!fieldNum){return}
-                customTrackField = '{{misctracking'+fieldNum+'=[**_**](!pfc --resource,misc='+(customTrack.match(/other/i) ? 'other ' : '')+customTrackType+',current=-1|'+description.get('characterid')+')[**&**](!pfc --resource,misc='+(customTrack.match(/other/i) ? 'other ' : '')+customTrackType+',current=+1|'+description.get('characterid')+')[**?**](!pfc --resource,misc='+(customTrack.match(/other/i) ? 'other ' : '')+customTrackType+',current=?'+HE('{')+customTrack+' Adjustment}|'+description.get('characterid')+')}}';
-                customDescField = '{{miscdescription'+fieldNum+'='+moneyCommand[customTrackType]+'}}';
-                macroText = rollTemplate ? macroText.replace(rollTemplate,rollTemplate+' '+customTrackField+' '+customDescField) : macroText;
-                macroObject.set('current',macroText);
-            }else{
-                sendChat('Resource Tracking','/w "'+getObj('character',description.get('characterid')).get('name')+'" There is already resource tracking handling for '+customTrack+' in the macro.');
-            }
-        }else{
-            customTrackType = trackObject ? (trackObject.get('name').match(/spells|item|ability|custom/) ? trackObject.get('name').match(/spells|item|ability|custom/)[0] : undefined) : undefined;
-            currentCustomTracking = macroObject ? macroObject.get('current').match(new RegExp('{{'+customTrackCommand[customTrackType]+'description\\d='+customTrack+'}}','i')) : undefined;
-            if(!currentCustomTracking){
-                _.some(_.range((customTrackCommand[customTrackType]==='misc' ? 1 : 2),7),r=>{
-                    if(macroText.match(new RegExp('{{'+customTrackCommand[customTrackType]+'tracking'+r+'=|{{'+customTrackCommand[customTrackType]+'description'+r+'='))){
                         return false;
-                    }else{
-                        fieldNum=r;
-                        return true;
                     }
-                });
-                if(!fieldNum){return}
-                customTrackField = '{{'+customTrackCommand[customTrackType]+'tracking'+fieldNum+'=[**_**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current=-1|'+description.get('characterid')+')[**&**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current=+1|'+description.get('characterid')+')[**?**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current=?'+HE('{')+customTrack+' Adjustment}|'+description.get('characterid')+')[**1**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current='+(customTrackCommand[customTrackType]==='spell' ? 0 : 'max')+'|'+description.get('characterid')+')}}';
-                customDescField = '{{'+customTrackCommand[customTrackType]+'description'+fieldNum+'='+(customTrackCommand[customTrackType] === 'misc' ? customTrack : '['+customTrack+' Card](~'+trackObject.get('characterid')+'|'+trackObject.get('name').replace('name','roll')+')')+'}}';
-                macroText = rollTemplate ? macroText.replace(rollTemplate,rollTemplate+' '+customTrackField+' '+customDescField) : macroText;
-                macroObject.set('current',macroText);
-            }else{
-                sendChat('Resource Tracking','/w "'+getObj('character',description.get('characterid')).get('name')+'" There is already resource tracking handling for '+customTrack+' in the macro.');
+                }) ? _.find(attributes,(a)=>{return a.get('current')===customTrack && a.get('name').match(/repeating_.+_-.+_name|custom[ac]\d+-name/)}) : trackObject;
+                if(!trackObject){
+                    return;
+                }
+                macroObject =  _.find(attributes,(a)=>{return a.get('name').toLowerCase()===description.get('name').toLowerCase().replace((sectionType==='weapon' ? 'notes' : 'description'),((isNPC && sectionType!=='ability') ? 'npc-macro-text' : 'macro-text'))});
+                macroText = macroObject.get('current');
+                rollTemplate = macroText.match(/&{template:[^}]+}/) ? macroText.match(/&{template:[^}]+}/)[0] : undefined;
+                if(moneyTrack){
+                    customTrackType = trackObject ? (trackObject.get('name').match(/[CSGP]P/) ? trackObject.get('name').match(/[CSGP]P/)[0] : undefined) : undefined;
+                    currentCustomTracking = macroObject ? macroObject.get('current').match(new RegExp('{{miscdescription\\d='+(trackObject.get('name').match(/other/) ? 'other ' : '')+moneyCommand[customTrackType]+'}}','i')) : undefined;
+                    if(!currentCustomTracking){
+                        _.some(_.range(1,7),r=>{
+                            if(macroText.match(new RegExp('{{misctracking'+r+'=|{{miscdescription'+r+'='))){
+                                return false;
+                            }else{
+                                fieldNum=r;
+                                return true;
+                            }
+                        });
+                        if(!fieldNum){return}
+                        customTrackField = '{{misctracking'+fieldNum+'=[**_**](!pfc --resource,misc='+(customTrack.match(/other/i) ? 'Other ' : '')+customTrackType+',current=-1|'+description.get('characterid')+')[**&**](!pfc --resource,misc='+(customTrack.match(/other/i) ? 'other ' : '')+customTrackType+',current=+1|'+description.get('characterid')+')[**?**](!pfc --resource,misc='+(customTrack.match(/other/i) ? 'other ' : '')+customTrackType+',current=?'+HE('{')+customTrack+' Adjustment}|'+description.get('characterid')+')}}';
+                        customDescField = '{{miscdescription'+fieldNum+'='+(customTrack.match(/other/i) ? 'Other ' : '')+moneyCommand[customTrackType]+'}}';
+                        macroText = rollTemplate ? macroText.replace(rollTemplate,rollTemplate+' '+customTrackField+' '+customDescField) : macroText;
+                        macroObject.set('current',macroText);
+                    }else{
+                        sendChat('Resource Tracking','/w "'+getObj('character',description.get('characterid')).get('name')+'" There is already resource tracking handling for '+customTrack+' in the macro.');
+                    }
+                }else{
+                    customTrackType = trackObject ? (trackObject.get('name').match(/spells|item|ability|custom/) ? trackObject.get('name').match(/spells|item|ability|custom/)[0] : undefined) : undefined;
+                    currentCustomTracking = macroObject ? macroObject.get('current').match(new RegExp('{{'+customTrackCommand[customTrackType]+'description\\d='+customTrack+'}}','i')) : undefined;
+                    if(!currentCustomTracking){
+                        _.some(_.range((customTrackCommand[customTrackType]==='misc' ? 1 : 2),7),r=>{
+                            if(macroText.match(new RegExp('{{'+customTrackCommand[customTrackType]+'tracking'+r+'=|{{'+customTrackCommand[customTrackType]+'description'+r+'='))){
+                                return false;
+                            }else{
+                                fieldNum=r;
+                                return true;
+                            }
+                        });
+                        if(!fieldNum){return}
+                        customTrackField = '{{'+customTrackCommand[customTrackType]+'tracking'+fieldNum+'=[**_**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current=-1|'+description.get('characterid')+')[**&**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current=+1|'+description.get('characterid')+')[**?**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current=?'+HE('{')+customTrack+' Adjustment}|'+description.get('characterid')+')[**1**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current='+(customTrackCommand[customTrackType]==='spell' ? 0 : 'max')+'|'+description.get('characterid')+')}}';
+                        customDescField = '{{'+customTrackCommand[customTrackType]+'description'+fieldNum+'='+(customTrackCommand[customTrackType] === 'misc' ? customTrack : '['+customTrack+' Card](~'+trackObject.get('characterid')+'|'+trackObject.get('name').replace('name','roll')+')')+'}}';
+                        macroText = rollTemplate ? macroText.replace(rollTemplate,rollTemplate+' '+customTrackField+' '+customDescField) : macroText;
+                        macroObject.set('current',macroText);
+                    }else{
+                        sendChat('Resource Tracking','/w "'+getObj('character',description.get('characterid')).get('name')+'" There is already resource tracking handling for '+customTrack+' in the macro.');
+                    }
+                }
             }
-        }
+            if(!_.isEmpty(ct)){
+                ctWorker();
+            }
+        };
+        ctWorker();
         }catch(err){
             sendError(err);
         }
@@ -769,7 +817,7 @@ var PFCompanion = PFCompanion || (function() {
             isNPC = getAttrByName(character.id,'is_npc')==='0' ? false : true,
             noteNameAttr,rowID,noteAttr,insufficient,money;
             
-        if(!note.match(/[GSCP]P/)){
+        if(!note.match(/[GSCP]P|spell\s*points/i)){
             noteNameAttr = _.find(attributes,(a)=>{return a.get('current')===note && a.get('name').match(/custom[ac]\d+-name/)});
             rowID = noteNameAttr ? noteNameAttr.get('name').match(/(?:custom([abc]\d+)-name)/) : undefined;
             rowID = rowID ? (!rowID[1].match(/10|11|12/) ? rowID[1] : undefined) : undefined;
@@ -777,9 +825,16 @@ var PFCompanion = PFCompanion || (function() {
             if(!noteAttr){
                 return;
             }
-        }else{
+        }else if(note.match(/[GSCP]P/)){
             money=true;
             noteAttr = _.find(attributes,(a)=>{return a.get('name').match(note.replace(/other\s+/i,'other-'))});
+        }else if(note.match(/spell\s*points/i)){
+            noteNameAttr = _.find(attributes,(a)=>{return a.get('name').match(/spellclass-[0-2]-name/) && a.get('current')===note.replace(/\s+Spell\s*Points/i,'')});
+            noteAttr = noteNameAttr ? _.find(attributes,(a)=>{return a.get('name')===noteNameAttr.get('name').replace('name','spell-points-per-day')}) : undefined;
+            log(noteAttr);
+            if(!noteAttr){
+                return;
+            }
         }
         if(!noteAttr){
             return;
@@ -833,6 +888,7 @@ var PFCompanion = PFCompanion || (function() {
             nVal,returnValue,maxValue,spellClass,waiter,promiseTest;
         if((''+change).toLowerCase()==='max'){
             nVal = altMax ? altMax : attribute.get('max');
+            log(nVal);
         }else if(adj){
             adj[2]=parseInt(adj[2],10);
             adj[1]=adj[1]||'=';

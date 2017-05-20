@@ -849,7 +849,7 @@ var PFCompanion = PFCompanion || (function() {
         insufficient = changeCurrent ? await setResource(noteAttr,false,changeCurrent,null,altMax) : 0;
         insufficient = insufficient*-1;
         sendChat('Resource Tracking','@{'+character.get('name')+'|'+(!isNPC ? 'PC-whisper':'NPC-whisper')+'} &{template:pf_block} @{'+character.get('name')+'|toggle_accessible_flag} @{'+character.get('name')+'|toggle_rounded_flag} {{color=@{'+character.get('name')+'|rolltemplate_color}}} '
-        +'{{subtitle='+(insufficient>0 ? ('``<b>INSUFFICIENT '+note+'</b>``<br>'+insufficient+' short') : '')+'}} {{name=Remaining '+note+'}} {{hasuses=1}} {{qty='+noteAttr.get('current')+'}} {{qty_max='+((parseInt(noteAttr.get('max'))>0 && noteAttr.get('max')!=='') ? noteAttr.get('max') : '-')+'}}'
+        +'{{subtitle='+(insufficient>0 ? ('``<b>INSUFFICIENT '+note+'</b>``<br>'+insufficient+' short') : '')+'}} {{name=Remaining '+note+'}} {{hasuses=1}} {{qty='+noteAttr.get('current')+'}} {{qty_max='+(altMax ? altMax : ((parseInt(noteAttr.get('max'))>0 && noteAttr.get('max')!=='') ? noteAttr.get('max') : '-'))+'}}'
         +'{{misctracking1=[**_**](!pfc --resource,misc='+note+',current=-1|'+character.id+')[**&**](!pfc --resource,misc='+note+',current=+1|'+character.id+')[**?**](!pfc --resource,misc='+note+',current=?'+HE('{'+note+' Adjustment}')+'|'+character.id+')'+(money ? '' : '[**1**](!pfc --resource,misc='+note+',current=max|'+character.id+')')+'}}'
         +'{{miscdescription1='+note+'}}');
         }catch(err){

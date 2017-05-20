@@ -26,7 +26,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.087',
         sheetVersion = [1.53,1.52,1.51],
-        lastUpdate = 1495259286,
+        lastUpdate = 1495290911,
         schemaVersion = 0.087,
         defaults = {
             css: {
@@ -94,6 +94,8 @@ var PFCompanion = PFCompanion || (function() {
             ']' : '&'+'#93'+';',
             '"' : '&'+'quot'+';',
             ':' : '&'+'#58'+';',
+            '(' : '&'+'#40'+';',
+            ')' : '&'+'#41'+';'
             //'-' : '&'+'mdash'+';'
         },
         re=new RegExp('('+_.map(_.keys(entities),esRE).join('|')+')','g');
@@ -111,11 +113,11 @@ var PFCompanion = PFCompanion || (function() {
         }
         sheetCompat=true;
         log('-=> Pathfinder Companion v'+version+' || Compatible with Sheet Version '+sheetVersion+' <=-  ['+(new Date(lastUpdate*1000))+']');
-        if( ! _.has(state,'PFCompanion') || state.PFCompanion.version !== schemaVersion) {
+        if( ! _.has(state,'PFCompanion') || state.PFCompanion.version !== schemaVersion || !_.has(state.PFCompanion,'lastUpdate') || lastUpdate!==state.PFCompanion.lastUpdate) {
             log('  > Updating Schema to v'+schemaVersion+' <');
-            log('  > Cleaning out old resource tracking syntax <');
             state.PFCompanion = state.PFCompanion || {};
             state.PFCompanion.version = schemaVersion;
+            state.PFCompanion.lastUpdate = lastUpdate;
             [/skill$/,/skillc$/,/checks$/,/defense$/,/attack$/,/ability$/,/item$/,/initiative$/],
             state.PFCompanion.toCreate = state.PFCompanion.toCreate || {};
             state.PFCompanion.npcToCreate = state.PFCompanion.npcToCreate || {};
@@ -137,6 +139,8 @@ var PFCompanion = PFCompanion || (function() {
                 'Fatigued':'radioactive'
             };
             state.PFCompanion.defaultToken=state.PFCompanion.defaultToken || {};
+            log('  > Updating active automatic features <');
+            initialize();
 		};
 		/*if(state.PFCompanion.TAS === 'auto' || state.PFCompanion.ResourceTrack==='on'){
 		    //initialize();
@@ -435,8 +439,8 @@ var PFCompanion = PFCompanion || (function() {
         if(sourceSpellName){
             spellClass = parseInt(getAttrByName(character.id,'repeating_spells_'+sourceSpell+'_spellclass_number'));
             spontaneous = spellClass>-1 ? (getAttrByName(character.id,'spellclass-'+spellClass+'-casting_type')==='1' ? true : false) : undefined;
-            spellTrackingButtonField = spontaneous!==undefined ? ('{{spelltracking1=[**_**](!pfc --resource,spell='+sourceSpellName.get('current')+',current=-1|'+character.id+')[**&**](!pfc --resource,spell='+sourceSpellName.get('current')+',current=+1|'+character.id+')[**?**](!pfc --resource,spell='+sourceSpellName.get('current')+',current=?'+HE('{')+'Spell Adjustment}|'+character.id+')[**1**](!pfc --resource,spell='+sourceSpellName.get('current')+',current=0|'+character.id+')}}') : '';
-            spellDescButtonField = '{{spelldescription1=['+sourceSpellName.get('current')+' Spell Card](~'+character.get('name')+'|'+sourceSpellName.get('name').replace('_name',(isNPC ? '_npc-roll' : '_roll'))+')}}';
+            spellTrackingButtonField = spontaneous!==undefined ? ('{{spelltracking1=[**_**](!pfc --resource,spell='+HE(sourceSpellName.get('current'))+',current=-1|'+character.id+')[**&**](!pfc --resource,spell='+HE(sourceSpellName.get('current'))+',current=+1|'+character.id+')[**?**](!pfc --resource,spell='+HE(sourceSpellName.get('current'))+',current=?'+HE('{')+'Spell Adjustment}|'+character.id+')[**1**](!pfc --resource,spell='+HE(sourceSpellName.get('current'))+',current=0|'+character.id+')}}') : '';
+            spellDescButtonField = '{{spelldescription1=['+HE(sourceSpellName.get('current'))+' Spell Card](~'+HE(character.get('name'))+'|'+sourceSpellName.get('name').replace('_name',(isNPC ? '_npc-roll' : '_roll'))+')}}';
             duplicateSpell = macroText.match(/{{spelldescription1=.*?(?=}})}}|{{spelltracking1=.*?(?=}})}}/g);
             duplicateSpell = duplicateSpell ? _.reject(duplicateSpell,(d)=>{return (d===spellTrackingButtonField || d===spellDescButtonField)}) : undefined;
         }
@@ -446,8 +450,8 @@ var PFCompanion = PFCompanion || (function() {
             abilityUses = _.find(attributes,(a)=>{return a.get('name').toLowerCase()==='repeating_ability_'+sourceAbility.toLowerCase()+'_hasuses'});
             abilityUses = abilityUses ? (abilityUses.get('current')==='1' ? true : false) : false;
             if(abilityUses){
-                abilityTrackingButtonField = '{{abilitytracking1=[**_**](!pfc --resource,ability='+abilityName.get('current')+',current=-1|'+character.id+')[**&**](!pfc --resource,ability='+abilityName.get('current')+',current=+1|'+character.id+')[**?**](!pfc --resource,ability='+abilityName.get('current')+',current=?'+HE('{')+'Ability Adjustment}|'+character.id+')[**1**](!pfc --resource,ability='+abilityName.get('current')+',current=max|'+character.id+')}}'
-                abilityDescButtonField = '{{abilitydescription1=['+abilityName.get('current')+' Description](~'+character.get('name')+'|'+abilityName.get('name').replace('_name',(isNPC ? '_npc-roll' : '_roll'))+')}}';
+                abilityTrackingButtonField = '{{abilitytracking1=[**_**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=-1|'+character.id+')[**&**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=+1|'+character.id+')[**?**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=?'+HE('{')+'Ability Adjustment}|'+character.id+')[**1**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=max|'+character.id+')}}'
+                abilityDescButtonField = '{{abilitydescription1=['+HE(abilityName.get('current'))+' Description](~'+character.get('name')+'|'+abilityName.get('name').replace('_name',(isNPC ? '_npc-roll' : '_roll'))+')}}';
                 duplicateAbility = macroText.match(/{{abilitydescription1=.*?(?=}})}}|{{abilitytracking1=.*?(?=}})}}/g);
                 duplicateAbility = duplicateAbility ? _.reject(duplicateAbility,(d)=>{return (d===abilityTrackingButtonField || d===abilityDescButtonField) }) : undefined;
             }
@@ -492,7 +496,7 @@ var PFCompanion = PFCompanion || (function() {
         if(spontaneous===undefined || !spellName){
             return;
         }
-        spellButtonField = spontaneous!==undefined ? ('{{spelltracking1=[**_**](!pfc --resource,spell='+spellName.get('current')+',current=-1|'+character.id+')[**&**](!pfc --resource,spell='+spellName.get('current')+',current=+1|'+character.id+')[**?**](!pfc --resource,spell='+spellName.get('current')+',current=?'+HE('{')+'Spellcasting Adjustment}|'+character.id+')[**1**](!pfc --resource,spell='+spellName.get('current')+',current=0|'+character.id+')}}') : '';
+        spellButtonField = spontaneous!==undefined ? ('{{spelltracking1=[**_**](!pfc --resource,spell='+HE(spellName.get('current'))+',current=-1|'+character.id+')[**&**](!pfc --resource,spell='+HE(spellName.get('current'))+',current=+1|'+character.id+')[**?**](!pfc --resource,spell='+HE(spellName.get('current'))+',current=?'+HE('{')+'Spellcasting Adjustment}|'+character.id+')[**1**](!pfc --resource,spell='+HE(spellName.get('current'))+',current=0|'+character.id+')}}') : '';
         duplicateSpell = macroText.match(/{{spelltracking1=.*?(?=}})}}/g);
         duplicateSpell = duplicateSpell ? _.reject(duplicateSpell,(d)=>{return d===spellButtonField}) : undefined;
         rollTemplate = macroText.match(/(?:&{template:(.*)})/) ? macroText.match(/(?:&{template:([^}]+)})/)[1] : undefined;
@@ -518,7 +522,7 @@ var PFCompanion = PFCompanion || (function() {
         
         hasUses = getAttrByName(character.id,'repeating_ability_'+rowID+'_hasuses') === '1' ? true : false;
         
-        abilityButtonField = '{{abilitytracking1=[**_**](!pfc --resource,ability='+abilityName.get('current')+',current=-1|'+character.id+')[**&**](!pfc --resource,ability='+abilityName.get('current')+',current=+1|'+character.id+')[**?**](!pfc --resource,ability='+abilityName.get('current')+',current=?'+HE('{')+'Ability Adjustment}|'+character.id+')[**1**](!pfc --resource,ability='+abilityName.get('current')+',current=max|'+character.id+')}}';
+        abilityButtonField = '{{abilitytracking1=[**_**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=-1|'+character.id+')[**&**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=+1|'+character.id+')[**?**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=?'+HE('{')+'Ability Adjustment}|'+character.id+')[**1**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=max|'+character.id+')}}';
         duplicate = macroText.match(/{{abilitytracking1=.*?(?=}})}}/g);
         duplicate = duplicate ? _.reject(duplicate,(d)=>{return d===abilityButtonField}) : undefined;
         duplicate ? _.each(duplicate,(d)=>{macroText = macroText.replace(d,'')}) : undefined;
@@ -540,7 +544,7 @@ var PFCompanion = PFCompanion || (function() {
         if(!itemName){
             return;
         }
-        itemButtonField = '{{itemtracking1=[**_**](!pfc --resource,item='+itemName.get('current')+',current=-1|'+character.id+')[**&**](!pfc --resource,item='+itemName.get('current')+',current=+1|'+character.id+')[**?**](!pfc --resource,item='+itemName.get('current')+',current=?'+HE('{')+itemName.get('current')+' Adjustment}|'+character.id+')[**1**](!pfc --resource,item='+itemName.get('current')+',current=max|'+character.id+')}}';
+        itemButtonField = '{{itemtracking1=[**_**](!pfc --resource,item='+HE(itemName.get('current'))+',current=-1|'+character.id+')[**&**](!pfc --resource,item='+HE(itemName.get('current'))+',current=+1|'+character.id+')[**?**](!pfc --resource,item='+HE(itemName.get('current'))+',current=?'+HE('{')+HE(itemName.get('current'))+' Adjustment}|'+character.id+')[**1**](!pfc --resource,item='+HE(itemName.get('current'))+',current=max|'+character.id+')}}';
         duplicate = macroText.match(/{{itemtracking1=.*?(?=}})}}/g);
         duplicate = duplicate ? _.reject(duplicate,(d)=>{return d===itemButtonField}) : undefined;
         duplicate ? _.each(duplicate,(d)=>{macroText = macroText.replace(d,'')}) : undefined;
@@ -610,8 +614,8 @@ var PFCompanion = PFCompanion || (function() {
                         }
                     });
                     if(!fieldNum){return}
-                    customTrackField = '{{misctracking'+fieldNum+'=[**_**](!pfc --resource,misc='+spellClass+' Spell Points,current=-1|'+description.get('characterid')+')[**&**](!pfc --resource,misc='+spellClass+' Spell Points,current=+1|'+description.get('characterid')+')[**?**](!pfc --resource,misc='+spellClass+' Spell Points,current=?'+HE('{')+spellClass+' Spell Points Adjustment}|'+description.get('characterid')+')[**1**](!pfc --resource,misc='+spellClass+' Spell Points,current=max|'+description.get('characterid')+')}}';
-                    customDescField = '{{miscdescription'+fieldNum+'='+spellClass+' Spell Points}}';
+                    customTrackField = '{{misctracking'+fieldNum+'=[**_**](!pfc --resource,misc='+HE(spellClass)+' Spell Points,current=-1|'+description.get('characterid')+')[**&**](!pfc --resource,misc='+HE(spellClass)+' Spell Points,current=+1|'+description.get('characterid')+')[**?**](!pfc --resource,misc='+HE(spellClass)+' Spell Points,current=?'+HE('{')+HE(spellClass)+' Spell Points Adjustment}|'+description.get('characterid')+')[**1**](!pfc --resource,misc='+HE(spellClass)+' Spell Points,current=max|'+description.get('characterid')+')}}';
+                    customDescField = '{{miscdescription'+fieldNum+'='+HE(spellClass)+' Spell Points}}';
                     macroText = rollTemplate ? macroText.replace(rollTemplate,rollTemplate+' '+customTrackField+' '+customDescField) : macroText;
                     macroObject.set('current',macroText);
                 }else{
@@ -665,8 +669,8 @@ var PFCompanion = PFCompanion || (function() {
                             }
                         });
                         if(!fieldNum){return}
-                        customTrackField = '{{'+customTrackCommand[customTrackType]+'tracking'+fieldNum+'=[**_**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current=-1|'+description.get('characterid')+')[**&**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current=+1|'+description.get('characterid')+')[**?**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current=?'+HE('{')+customTrack+' Adjustment}|'+description.get('characterid')+')[**1**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+customTrack+',current='+(customTrackCommand[customTrackType]==='spell' ? 0 : 'max')+'|'+description.get('characterid')+')}}';
-                        customDescField = '{{'+customTrackCommand[customTrackType]+'description'+fieldNum+'='+(customTrackCommand[customTrackType] === 'misc' ? customTrack : '['+customTrack+' Card](~'+trackObject.get('characterid')+'|'+trackObject.get('name').replace('name','roll')+')')+'}}';
+                        customTrackField = '{{'+customTrackCommand[customTrackType]+'tracking'+fieldNum+'=[**_**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+HE(customTrack)+',current=-1|'+description.get('characterid')+')[**&**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+HE(customTrack)+',current=+1|'+description.get('characterid')+')[**?**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+HE(customTrack)+',current=?'+HE('{')+HE(customTrack)+' Adjustment}|'+description.get('characterid')+')[**1**](!pfc --resource,'+customTrackCommand[customTrackType]+'='+HE(customTrack)+',current='+(customTrackCommand[customTrackType]==='spell' ? 0 : 'max')+'|'+description.get('characterid')+')}}';
+                        customDescField = '{{'+customTrackCommand[customTrackType]+'description'+fieldNum+'='+(customTrackCommand[customTrackType] === 'misc' ? customTrack : '['+HE(customTrack)+' Card](~'+trackObject.get('characterid')+'|'+trackObject.get('name').replace('name','roll')+')')+'}}';
                         macroText = rollTemplate ? macroText.replace(rollTemplate,rollTemplate+' '+customTrackField+' '+customDescField) : macroText;
                         macroObject.set('current',macroText);
                     }else{

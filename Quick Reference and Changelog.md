@@ -14,7 +14,10 @@ Known issues
     1. While the script supports importing of multiple statblocks with a single command, limit how many creatures you import at a given time as the time it takes to import increases non-linearly (especially if they cast spells).
 1. I would recommend waiting to install the script until I upload the next version of the beta as some of the syntax for how resource tracking is handled will be changed.
 ____________
-For more detailed instructions and macro examples, see the User's Manual: https://docs.google.com/document/d/12OWJIiT8RWN6zeyZdpkl3d8_DY7XLVxbVL9QzxyJV_s/edit
+For more detailed instructions and macro examples, see the User's Manual:
+
+https://docs.google.com/document/d/12OWJIiT8RWN6zeyZdpkl3d8_DY7XLVxbVL9QzxyJV_s/edit
+
 Companion API Script vPrototype 0.085
 ============
 Configuration Options

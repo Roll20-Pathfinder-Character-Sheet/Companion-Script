@@ -26,7 +26,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.087',
         sheetVersion = [1.6,1.53,1.52,1.51],
-        lastUpdate = 1495301678,
+        lastUpdate = 1495335648,
         schemaVersion = 0.087,
         defaults = {
             css: {
@@ -142,8 +142,12 @@ var PFCompanion = PFCompanion || (function() {
                 'Sickened':'chemical-bolt',
                 'Helpless':'interdiction',
                 'Stunned':'stopwatch',
-                'Fatigued':'radioactive'
+                'Fatigued':'radioactive',
+                'Energy Drain':'broken-skull'
             };
+            if(!_.has(state.PFCompanion.markers,'Energy Drain')){
+                state.PFCompanion.markers['Energy Drain']='broken-skull';
+            }
             state.PFCompanion.defaultToken=state.PFCompanion.defaultToken || {};
             log('  > Updating active automatic features <');
             initialize();
@@ -1059,7 +1063,6 @@ var PFCompanion = PFCompanion || (function() {
                 }
                 hpDifference = parseInt(prev.current) - objCurr;
                 if(hpDifference<=0){
-                    log('difference');
                     if(objCurr>objMax){
                         obj.set('current',objMax);
                     }
@@ -1164,28 +1167,30 @@ var PFCompanion = PFCompanion || (function() {
                 'Helpless':'1',
                 'Stunned':'2'
             },
-            conditionNameArr = ['Fatigued','Blinded','Entangled','Invisible','Cowering','Fear','Pinned','Dazzled','Flat-Footed','Prone','Deafened','Grappled','Sickened','Helpless','Stunned'],
-            conditionAttributes,conditionAttr,conditionName,
+            conditionNameArr = ['Fatigued','Blinded','Entangled','Invisible','Cowering','Fear','Pinned','Dazzled','Flat-Footed','Prone','Deafened','Grappled','Sickened','Helpless','Stunned','Energy Drain'],
+            conditionAttributes,conditionAttr,conditionName,drainMatch,
             buffAttr,buffNameAttr,buffMatch,buffStatus,
             toSet,graphic,
             turnTracker,turnOrder,conditionTrackName,buffTrackName,conditionObject,buffObject,buffIndex,conditionIndex,conditionState,buffState;
             
         if(condition){
-            conditionName = condition.match(/exhaust|fatigue/i) ? 'fatigue' : condition;
+            conditionName = condition.match(/exhaust|fatigue/i) ? 'fatigue' : (condition.match(/energy|drain/i) ? 'energy drain' : condition);
+            drainMatch = condition.match(/(?:energy\s+)?(?:drain\s+)?(\d+|all)/i)
             conditionName = _.find(conditionNameArr,(cn)=>{return cn.match(new RegExp(conditionName,'i'))});
             if(!conditionName){
                 //handling for invalid condition name
                 return;
             }
             conditionAttributes = _.filter(attributes,(a)=>{return a.get('name').match(/condition-/)});
-            toSet = condition.match(/exhaust/i) ? '3' : (condition.match(/fatigue/i) ? '1' : convertValue[conditionName]);
-            conditionAttr = getAttrByName(character.id,'condition-'+conditionName);
-            conditionState = (swap ? ''+(parseInt(swapper[conditionAttr])*parseInt(toSet)) : (remove ? '0' : toSet));
-            await createAttrWithWorker('condition-'+conditionName,character.id,conditionAttributes,conditionState);
+            conditionAttr = getAttrByName(character.id,'condition-'+(conditionName==='Energy Drain' ? 'Drained' : conditionName));
+            toSet = condition.match(/exhaust/i) ? '3' : (condition.match(/fatigue/i) ? '1' : (conditionName==='Energy Drain' ? Math.min(parseInt(conditionAttr)+((remove ? 1 : -1)*parseInt((drainMatch ? drainMatch[1] : '1'))),0) : convertValue[conditionName]));
+            toSet = drainMatch ? (drainMatch[1].match(/all/i) ? 0 : toSet) : toSet;
+            conditionState = (swap ? ''+(parseInt(swapper[conditionAttr])*parseInt(toSet)) : ((remove && conditionName!=='Energy Drain') ? '0' : toSet));
+            await createAttrWithWorker('condition-'+(conditionName==='Energy Drain' ? 'Drained' : conditionName),character.id,conditionAttributes,conditionState);
             if(state.PFCompanion.defaultToken.enable==='on' && !_.isEmpty(character.get('controlledby'))){
                 graphic = findObjs({type:'graphic',represents:character.id})[0];
                 if(graphic){
-                    applyStatus(character,state.PFCompanion.markers[conditionName],parseInt(conditionState)===0 ? false : (condition.match(/exha/i) ? 2 : true));
+                    applyStatus(character,state.PFCompanion.markers[conditionName],parseInt(conditionState)===0 ? false : (condition.match(/exha/i) ? 2 : (conditionName==='Energy Drain' ? (Math.abs(toSet)===0 ? false : Math.min(Math.abs(toSet),9)) : true)));
                 }
             }
         }
@@ -1209,7 +1214,7 @@ var PFCompanion = PFCompanion || (function() {
                 turnOrder = Campaign().get('turnorder');
                 turnOrder = !_.isEmpty(turnOrder) ? JSON.parse(turnOrder) : [];
                 if(conditionName){
-                    conditionTrackName = character.get('name')+' Condition: '+conditionName;
+                    conditionTrackName = character.get('name')+' Condition: '+conditionName+(drainMatch ? ' '+drainMatch[1] : '');
                     _.some(_.range(turnOrder.length),(r)=>{
                         if(turnOrder[r].custom===conditionTrackName && turnOrder[r].id==='-1'){
                             conditionIndex = r;
@@ -1795,19 +1800,24 @@ var PFCompanion = PFCompanion || (function() {
             var attribute,
                 retValue = new Promise((resolve,reject)=>{
                     onSheetWorkerCompleted(()=>{
+                        log(attribute);
                         resolve(attribute);
                     });
                 });
-                
+            log(nam);
+            log(id);
+            log(curr);
+            log(mx);
             attribute = _.find(attributes,(a)=>{return a.get('name').toLowerCase()===nam.toLowerCase()});
+            log(attribute);
             if(!attribute){
                 attribute = createObj('attribute',{characterid:id,name:nam});
                 attributes.push(attribute);
             }
-            if(curr && mx){
+            if(!isNaN(curr) && !isNaN(mx)){
                 attribute.setWithWorker({current:curr,max:mx});
-            }else if(curr || mx){
-                attribute.setWithWorker((mx ? 'max' : 'current'),(mx ? mx : curr));
+            }else if(!isNaN(curr) || !isNaN(mx)){
+                attribute.setWithWorker((mx ? 'max' : 'current'),''+(mx ? mx : curr));
             }
             return retValue;
         }catch(err){
@@ -1988,7 +1998,7 @@ var PFCompanion = PFCompanion || (function() {
     },
     
     markerConfig = function(menu){
-        var conditions = ['Blinded','Entangled','Invisible','Cowering','Fear','Pinned','Dazzled','Flat-Footed','Prone','Deafened','Grappled','Sickened','Helpless','Stunned','Fatigued'],
+        var conditions = ['Blinded','Entangled','Invisible','Cowering','Fear','Pinned','Dazzled','Flat-Footed','Prone','Deafened','Grappled','Sickened','Helpless','Stunned','Fatigued','Energy Drain'],
             statusQuery='|';
             
         statusQuery += statusquery.join('|')+'}';
@@ -2448,13 +2458,14 @@ var PFCompanion = PFCompanion || (function() {
                 }else if(obj.get('name')==='HP' && parseInt(obj.get('current'))!==parseInt(prev.current) && state.PFCompanion.hp==='on'){
                     _.defer(handleHP,obj,prev);
                 }else if(obj.get('name').match(/condition-.*|repeating_buff_[^_]+_buff-enable_toggle/)){
-                    let cbName = obj.get('name').match(/condition-.*/) ? state.PFCompanion.markers[obj.get('name').replace('condition-','')] : getAttrByName(obj.get('characterid'),obj.get('name').replace('enable_toggle','name').replace('condition-',''));
+                    let condName = obj.get('name').replace('condition-','');
+                    let cbName = obj.get('name').match(/condition-.*/) ? state.PFCompanion.markers[(obj.get('name').replace('condition-','')==='Drained' ? 'Energy Drain' : obj.get('name').replace('condition-',''))] : getAttrByName(obj.get('characterid'),obj.get('name').replace('enable_toggle','name'));
                     let character = getObj('character',obj.get('characterid'));
                     if(!cbName){return}
                     if(!_.isEmpty(character.get('controlledby'))){
                         cbName = cbName.replace(/(?:.*(?=\s+\|\|\s+))\s+\|\|\s+/,'');
                         if(cbName = statusquery[_.indexOf(statusquery,cbName)]){
-                            applyStatus(character,cbName,obj.get('current')===0 ? false : true);
+                            applyStatus(character,cbName,parseInt(obj.get('current'))===0 ? false : (condName === 'Drained' ? Math.abs(parseInt(obj.get('current'))) : ((condName==='Fatigued' && parseInt(obj.get('current'))===3) ? '2' : true)));
                         }
                     }
                 }
@@ -2579,24 +2590,55 @@ var PFCompanion = PFCompanion || (function() {
                                     _.each(conditionKeys,(ck)=>{
                                         conditionMarkers.push({'name':ck,'marker':state.PFCompanion.markers[ck]});
                                     });
-                                    _.each(buffMarkers,(b)=>{
-                                        if(_.indexOf(removed,b.marker)!==-1){
-                                            updated=true;
-                                            applyConditions(character,undefined,b.name,undefined,'remove');
-                                        }else if(_.indexOf(added,b.marker)!==-1){
-                                            updated=true;
-                                            applyConditions(character,undefined,b.name);
-                                        }
+                                    log(removed);
+                                    log(added);
+                                    log(conditionMarkers);
+                                    log('remove');
+                                    _.each(removed,(r)=>{
+                                        _.each(conditionMarkers,(c)=>{
+                                            if(r.match(c.marker)){
+                                                log(c);
+                                                updated=true;
+                                                if(r.match(/@2/) && c.name==='Fatigued'){
+                                                    c.name='Exhausted';
+                                                }else if(r.match(/@\d/) && c.name==='Energy Drain'){
+                                                    c.name='Energy Drain '+r.match(/@(\d)/)[1];
+                                                }
+                                                log('post match');
+                                                log(c);
+                                                applyConditions(character,c.name,null,null,'remove');
+                                            }
+                                        });
+                                        _.each(buffMarkers,(b)=>{
+                                            if(r.match(b.marker)){
+                                                updated=true;
+                                                applyConditions(character,null,b.name,null,'remove');
+                                            }
+                                        });
                                     });
-                                    _.each(conditionMarkers,(c)=>{
-                                        if(_.indexOf(removed,c.marker)!==-1){
-                                            updated=true;
-                                            applyConditions(character,c.name,null,undefined,'remove');
-                                        }else if(_.indexOf(added,c.marker)!==-1){
-                                            updated=true;
-                                            applyConditions(character,c.name);
-                                        }
-                                    })
+                                    log('add');
+                                    _.each(added,(a)=>{
+                                        _.each(conditionMarkers,(c)=>{
+                                            if(a.match(c.marker)){
+                                                log(c);
+                                                updated=true;
+                                                if(a.match(/@2/) && c.name==='Fatigued'){
+                                                    c.name='Exhausted';
+                                                }else if(a.match(/@\d/) && c.name==='Energy Drain'){
+                                                    c.name='Energy Drain '+a.match(/@(\d)/)[1];
+                                                }
+                                                log('post match');
+                                                log(c);
+                                                applyConditions(character,c.name);
+                                            }
+                                        });
+                                        _.each(buffMarkers,(b)=>{
+                                            if(a.match(b.marker)){
+                                                updated=true;
+                                                applyConditions(character,null,b.name);
+                                            }
+                                        });
+                                    });
                                 }
                                 if(!updated){
                                     character ? setDefaultTokenForCharacter(character, obj) : undefined;

@@ -26,7 +26,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.087',
         sheetVersion = [1.6,1.53,1.52,1.51],
-        lastUpdate = 1495335648,
+        lastUpdate = 1495415602,
         schemaVersion = 0.087,
         defaults = {
             css: {
@@ -478,7 +478,7 @@ var PFCompanion = PFCompanion || (function() {
                 +((macroText.indexOf(spellDescButtonField)===-1 && spellDescButtonField && spontaneous!==undefined) ? spellDescButtonField : '')
                 +((macroText.indexOf(abilityTrackingButtonField)===-1 && abilityTrackingButtonField) ? abilityTrackingButtonField : '')
                 +((macroText.indexOf(abilityDescButtonField)===-1 && abilityDescButtonField) ? abilityDescButtonField : '')
-                +((!macroText.match(/\|\|item=.+\|\||\|\|mainitem=.+\|\||\|\|offitem=.+\|\|/) && usesAmmo) ? ((mainAmmo || offAmmo) ? ((mainAmmo ? '||mainitem=?{Mainhand Ammunition}||' : '')+(offAmmo ? '||offitem=?{Offhand Ammunition}||' : '')) : '||item=?{Name of Ammunition Item}||') : '')) : '';
+                +((!macroText.match(/\|\|item=.+\|\||\|\|mainitem=.+\|\||\|\|offitem=.+\|\|/) && (usesAmmo||offAmmo||mainAmmo)) ? ((mainAmmo || offAmmo) ? ((mainAmmo ? '||mainitem=?{Mainhand Ammunition}||' : '')+(offAmmo ? '||offitem=?{Offhand Ammunition}||' : '')) : '||item=?{Name of Ammunition Item}||') : '')) : '';
         duplicateSpell ? _.each(duplicateSpell,(d)=>{macroText = macroText.replace(d,'')}) : undefined;
         duplicateAbility ? _.each(duplicateAbility,(d)=>{
             macroText = macroText.replace(d,'');
@@ -634,12 +634,13 @@ var PFCompanion = PFCompanion || (function() {
             }else{
                 trackObject = !_.some(money,(m)=>{
                     if(customTrack.match(new RegExp(m,'i'))){
-                        trackObject = _.find(attributes,(a)=>{return a.get('name')===(customTrack.match(/other/i) ? 'other-' : '')+m.replace(/[^\|]+\|/,'')});
+                        trackObject = _.find(attributes,(a)=>{return a.get('name')===((customTrack.match(/other/) ? 'other-' : '')+m.replace(/[^\|]+\|/,''))});
                         return moneyTrack = true;
                     }else{
                         return false;
                     }
                 }) ? _.find(attributes,(a)=>{return a.get('current')===customTrack && a.get('name').match(/repeating_.+_-.+_name|custom[ac]\d+-name/)}) : trackObject;
+                
                 if(!trackObject){
                     return;
                 }
@@ -1008,22 +1009,21 @@ var PFCompanion = PFCompanion || (function() {
             offName = offName ? offName.get('current') : undefined;
             mainCount = _.find(attributes,(a)=>{return a.get('name')===('repeating_item_'+mainAmmoId+'_qty')});
             offCount = _.find(attributes,(a)=>{return a.get('name')===('repeating_item_'+offAmmoId+'_qty')});
-            attackNames = msg.content.match(/attack\dname*=([^}]+)\d+}}/g);
+            attackNames = msg.content.match(/attack\d?name*=([^}]+)\d+}}/g);
             _.each(attackNames,(n)=>{
-                mainUsed += n.match(/attack\dname*=([^}]+)\d+}}/)[1].trim()===mainName.trim() ? 1 : 0;
-                mainUsed += n.match(/manyshot/i) ? 2 : 0;
-                offUsed += n.match(/attack\dname*=([^}]+)\d+}}/)[1].trim()===offName.trim() ? 1 : 0;
+                mainUsed += mainName ? (n.match(/attack\dname*=(.*?(?=\-\d+}}|\d+}}))\-?\d+}}/)[1].trim()===mainName.trim() ? 1 : 0) : 0;
+                mainUsed += mainName ? (n.match(/manyshot/i) ? 2 : 0) : 0;
+                offUsed += n.match(/attack\dname*=(.*?(?=\-\d+}}|\d+}}))\-?\d+}}/)[1].trim()===offName.trim() ? 1 : 0;
             });
-            if(!(mainUsed || offUsed)){
+            if((!mainCount && !offCount)){
                 return;
             }
-            
-            mainInsuf = mainUsed ? mainUsed-mainCount.get('current') : undefined;
-            offInsuf = offUsed ? offUsed-offCount.get('current') : undefined;
-            mainUsed ? setResource(mainCount,false,'-'+mainUsed) : undefined;
-            offUsed ? setResource(offCount,false,'-'+offUsed) : undefined;
-            mainUsed ? msgResourceState(character,isNPC,mainAmmoId,mainUsed,mainInsuf,mainCount) : undefined;
-            offUsed ? msgResourceState(character,isNPC,offAmmoId,offUsed,offInsuf,offCount) : undefined;
+            mainInsuf = (mainUsed && mainCount) ? mainUsed-mainCount.get('current') : undefined;
+            offInsuf = (offUsed && offCount) ? offUsed-offCount.get('current') : undefined;
+            (mainUsed && mainCount) ? setResource(mainCount,false,'-'+mainUsed) : undefined;
+            (offUsed && offCount) ? setResource(offCount,false,'-'+offUsed) : undefined;
+            (mainUsed && mainCount) ? msgResourceState(character,isNPC,mainAmmoId,mainUsed,mainInsuf,mainCount) : undefined;
+            (offUsed && offCount) ? msgResourceState(character,isNPC,offAmmoId,offUsed,offInsuf,offCount) : undefined;
             macroTextObject = _.find(attributes,(a)=>{
                 return (a.get('name').toLowerCase().indexOf((rollId.toLowerCase()+((isNPC && a.get('name').indexOf('item')===-1) ? '_npc-macro-text' : '_macro-text')))>-1 && a.get('name').toLowerCase().indexOf('-show')===-1);
             });
@@ -1064,14 +1064,18 @@ var PFCompanion = PFCompanion || (function() {
                 hpDifference = parseInt(prev.current) - objCurr;
                 if(hpDifference<=0){
                     if(objCurr>objMax){
-                        obj.set('current',objMax);
+                        _.defer((o,omax)=>{
+                            o.set('current',omax);
+                        },obj,objMax);
                     }
                 }else{
                     tempHP = _.find(attributes,(a)=>{return a.get('name')==='HP-temp'});
                     if(tempHP){
                         hpForTemp = parseInt(tempHP.get('current'))>0 ? Math.min(hpDifference,parseInt(tempHP.get('current'))) : 0;
-                        tempHP.set('current',parseInt(tempHP.get('current'))-hpForTemp);
-                        obj.set('current',objCurr+hpForTemp);
+                        _.defer((tHP,hft,o,ocurr)=>{
+                            tHP.set('current',parseInt(tHP.get('current'))-hft);
+                            o.set('current',ocurr+hft);
+                        },tempHP,hpForTemp,obj,objCurr);
                     }
                 }
                 break;  
@@ -1278,7 +1282,7 @@ var PFCompanion = PFCompanion || (function() {
         if(state.PFCompanion.defaultToken.bar3Link){
             bar3Attr = _.find(attributes,(a)=>{return a.get('name').toLowerCase() === state.PFCompanion.defaultToken.bar3Link.toLowerCase()});
             if(bar3Attr){
-                graphic.set({bar3_link:(npc ? '' : bar3Attr.id),bar1_value:bar3Attr.get('current'),bar3_max:(bar3Attr.get('max')!=='0' ? bar3Attr.get('max') : '')});
+                graphic.set({bar3_link:(npc ? '' : bar3Attr.id),bar3_value:bar3Attr.get('current'),bar3_max:(bar3Attr.get('max')!=='0' ? bar3Attr.get('max') : '')});
             }
         }
         
@@ -1361,7 +1365,7 @@ var PFCompanion = PFCompanion || (function() {
                             mapBars(token,character);
                         }
                     }
-                }else if(dk.match(/(?:showplayers_)bar[1-3](?:_(?:value|link|max))/)){
+                }else if(dk.match(/showplayers_bar[1-3]/)){
                     updated = true;
                     token.set(dk,(details[dk]==='on' ? true : false));
                 }else if(dk.match(/bar[1-3]_value/)){
@@ -1689,10 +1693,6 @@ var PFCompanion = PFCompanion || (function() {
             
             attrWorker = () =>{
                 let k = keys.shift();
-                if(k==='content_compendium'){
-                    log(k);
-                    log(attributesToSet[k]);
-                }
                 setAttr = _.find(attributes,(a)=>{return a.get('name')===k});
                 setAttr ? setAttr.set('current',attributesToSet[k]) : attributes.push(createObj('attribute',{characterid:iChar.id,name:k,current:attributesToSet[k]}));
                 if(!_.isEmpty(keys)){
@@ -1705,7 +1705,6 @@ var PFCompanion = PFCompanion || (function() {
                     resolve(createAttrWithWorker(name,id,attr,'1'));
                 },'npc_import_now',iChar.id,attributes);
             });
-            log(tokenImage);
             if(tokenImage){
                 let sizeOp = {
                     'Fine':35,
@@ -1800,16 +1799,11 @@ var PFCompanion = PFCompanion || (function() {
             var attribute,
                 retValue = new Promise((resolve,reject)=>{
                     onSheetWorkerCompleted(()=>{
-                        log(attribute);
                         resolve(attribute);
                     });
                 });
-            log(nam);
-            log(id);
-            log(curr);
-            log(mx);
+                
             attribute = _.find(attributes,(a)=>{return a.get('name').toLowerCase()===nam.toLowerCase()});
-            log(attribute);
             if(!attribute){
                 attribute = createObj('attribute',{characterid:id,name:nam});
                 attributes.push(attribute);
@@ -2421,18 +2415,18 @@ var PFCompanion = PFCompanion || (function() {
     
     attributeHandler = function(obj,event,prev){
         try{
-        if(!sheetCompat){
-            if(obj.get('name')==='PFSheet_Version'){
-                if(currSheet<parseFloat(obj.get('current'))){
-                    currSheet = parseFloat(obj.get('current'));
-                    if(_.indexOf(sheetVersion,currSheet)!==-1){
-                        sheetCompat=true;
-                    }
+        if(obj.get('name')==='PFSheet_Version'){
+            if(currSheet<parseFloat(obj.get('current'))){
+                currSheet = parseFloat(obj.get('current'));
+                if(_.indexOf(sheetVersion,currSheet)!==-1){
+                    sheetCompat=true;
+                }else{
+                    sheetCompat=false;
                 }
             }
-            if(!sheetCompat){
-                return;
-            }
+        }
+        if(!sheetCompat){
+            return;
         }
         switch(event){
             case 'change':
@@ -2590,22 +2584,15 @@ var PFCompanion = PFCompanion || (function() {
                                     _.each(conditionKeys,(ck)=>{
                                         conditionMarkers.push({'name':ck,'marker':state.PFCompanion.markers[ck]});
                                     });
-                                    log(removed);
-                                    log(added);
-                                    log(conditionMarkers);
-                                    log('remove');
                                     _.each(removed,(r)=>{
                                         _.each(conditionMarkers,(c)=>{
                                             if(r.match(c.marker)){
-                                                log(c);
                                                 updated=true;
                                                 if(r.match(/@2/) && c.name==='Fatigued'){
                                                     c.name='Exhausted';
                                                 }else if(r.match(/@\d/) && c.name==='Energy Drain'){
                                                     c.name='Energy Drain '+r.match(/@(\d)/)[1];
                                                 }
-                                                log('post match');
-                                                log(c);
                                                 applyConditions(character,c.name,null,null,'remove');
                                             }
                                         });
@@ -2616,19 +2603,15 @@ var PFCompanion = PFCompanion || (function() {
                                             }
                                         });
                                     });
-                                    log('add');
                                     _.each(added,(a)=>{
                                         _.each(conditionMarkers,(c)=>{
                                             if(a.match(c.marker)){
-                                                log(c);
                                                 updated=true;
                                                 if(a.match(/@2/) && c.name==='Fatigued'){
                                                     c.name='Exhausted';
                                                 }else if(a.match(/@\d/) && c.name==='Energy Drain'){
                                                     c.name='Energy Drain '+a.match(/@(\d)/)[1];
                                                 }
-                                                log('post match');
-                                                log(c);
                                                 applyConditions(character,c.name);
                                             }
                                         });

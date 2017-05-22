@@ -1,24 +1,15 @@
 /*
-Pathfinder Companion Script
--Planned Features-
-*StatBlock Import Parser
-    Parse for handling by compendium drag-drop handler
-*Temp HP/regular HP handling
-    Temp HP comes off first
-    Healing only heals regular HP
-*On the fly Whisper adjustment
-*Resource Tracking
-    Ammo - Currently attacks simply have a numerical ammo attribute not linked to the inventory
-    Spells
-        Prepared Casters: Specific spells are prepared X number of times. The preparation count for each specific spell needs to be adjusted when it is cast
-        Spont Casters: Can cast a spell of each spell level X number of times per day, need to track spell level slots
-    Special abilities (aka Stunning Strike) - Each one has a number of uses per day
-    Point pools - Unsure of how to handle these
-*Buff/Condition Activation
+Script: Pathfinder Companion Script for the Neceros Roll20 Sheet
+Author: Scott C.
+Roll20 Profile:https://app.roll20.net/users/459831/scott-c
+User's Manual: https://docs.google.com/document/d/12OWJIiT8RWN6zeyZdpkl3d8_DY7XLVxbVL9QzxyJV_s/edit
+Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince for beta testing. Chris and Vince for their work on the sheet
 
-
--Possible Features-
+|-------------------|
+|-Possible Features-|
+|-------------------|
 *Database modules
+*Feat/Ability/Spell import
 */
 
 var PFCompanion = PFCompanion || (function() {
@@ -26,7 +17,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.087',
         sheetVersion = [1.6,1.53,1.52,1.51],
-        lastUpdate = 1495419455,
+        lastUpdate = 1495428297,
         schemaVersion = 0.087,
         defaults = {
             css: {
@@ -1863,11 +1854,23 @@ var PFCompanion = PFCompanion || (function() {
             abilities = findObjs({type:'ability',characterid:character.id}),
             npcAbilities = ['NPC-ability_checks','NPC-Initiative-Roll','NPC-defenses','NPC-attacks','NPC-abilities','NPC-combat_skills','NPC-skills','NPC-items','NPC-Fort-Save','NPC-Ref-Save','NPC-Will-Save'],
             pcAbilities = ['ability_checks','Roll-for-initiative','defenses','attacks','abilities','combat_skills','skills','items','Fort-Save','Ref-Save','Will-Save'],
-            createKeys=['skill','skillc','checks','defense','fort','will','ref','attack','ability','item','spellbook','initiative'],
+            createKeys=['skill','skillc','checks','defense','fort','will','ref','attack','abilities','item','spellbook','initiative'],
+            nameOps={
+                'ability_checks':'Ability Checks',
+                'defenses':'All Defenses',
+                'attacks':'All Attacks',
+                'abilities':'All Abilities',
+                'combat_skills':'Combat Skills',
+                'skills':'All Skills',
+                'items':'Equipment',
+                'Fort-Save':'Fortitude Save',
+                'Ref-Save':'Reflex Save',
+                'Will-Save':'Will Save'
+            },
             spell2,spell3;
             
         toCreate = !_.isEmpty(toCreate) ? toCreate.split(/\s+/) : [];
-        if(spells === '1'){
+        if(''+spells === '1'){
             state.PFCompanion.npcToCreate['spellbook']==='on' ? npcAbilities.push('NPC-spellbook-0') : undefined;
             state.PFCompanion.toCreate['spellbook']==='on' ? pcAbilities.push('spellbook-0') : undefined;
             spell2 = getAttrByName(character.id,'spellclass-1');
@@ -1884,7 +1887,6 @@ var PFCompanion = PFCompanion || (function() {
         _.isEmpty(toCreate) ? _.each(createKeys,(ck)=>{
             state.PFCompanion[npc ? 'npcToCreate' : 'toCreate'][ck] === 'on' ? toCreate.push(ck) : undefined;
         }) : undefined;
-        toIgnore = toIgnore ? toIgnore : undefined;
         if(!npc){
             pcAbilities = !_.isEmpty(toCreate) ? _.filter(pcAbilities,(a)=>{return _.some(toCreate,(c)=>{return (c.toLowerCase()!=='skills' || c.toLowerCase()!=='skill') ? a.toLowerCase().indexOf(c)>-1 : (a.toLowerCase().indexOf(c)>-1 && a.toLowerCase().indexOf('combat')===-1)})}) : [];
             pcAbilities = toIgnore ? _.reject(pcAbilities,(a)=>{return _.some(toIgnore,(c)=>{return (c.toLowerCase()!=='skills' || c.toLowerCase()!=='skill') ? a.toLowerCase().indexOf(c)>-1 : (a.toLowerCase().indexOf(c)>-1 && a.toLowerCase().indexOf('combat')===-1)})}) : pcAbilities;
@@ -1905,7 +1907,7 @@ var PFCompanion = PFCompanion || (function() {
                 if(!remove && !_.some(abilities,(ab)=>{return ab.get('description')===a})){
                     createObj('ability',{
                         _characterid:character.id,
-                        name:a.indexOf('spellbook')>-1 ? (getAttrByName(character.id,'spellclass-'+a.replace('spellbook-','')+'-name')+' spellbook') : (a +'_token_action'),
+                        name:(a.indexOf('spellbook')>-1 || a.toLowerCase().indexOf('initiative')>-1) ? (a.indexOf('spellbook')>-1 ? (getAttrByName(character.id,'spellclass-'+a.replace('spellbook-','')+'-name')+' spellbook') : 'Initiative') : nameOps[a],
                         action:'%{'+character.get('name')+'|'+a+'}',
                         istokenaction:true,
                         description:a
@@ -1932,7 +1934,7 @@ var PFCompanion = PFCompanion || (function() {
                 if(!remove && !_.some(abilities,(ab)=>{return ab.get('description')===a})){
                     createObj('ability',{
                         _characterid:character.id,
-                        name:a.indexOf('spellbook')>-1 ? (getAttrByName(character.id,'spellclass-'+a.replace('NPC-spellbook-','')+'-name')+' spellbook') : (a +'_token_action'),
+                        name:(a.indexOf('spellbook')>-1 || a.toLowerCase().indexOf('initiative')>-1) ? (a.indexOf('spellbook')>-1 ? (getAttrByName(character.id,'spellclass-'+a.replace('NPC-spellbook-','')+'-name')+' spellbook') : 'Initiative') : nameOps[a.replace('NPC-','')],
                         action:'%{'+character.get('name')+'|'+a+'}',
                         istokenaction:true,
                         description:a
@@ -1943,7 +1945,7 @@ var PFCompanion = PFCompanion || (function() {
     },
     
     tokenSetupConfig = function(menu){
-        var toCheck = ['skill','skillc','checks','defense','fort','will','ref','attack','ability','item','spellbook','initiative'],
+        var toCheck = ['skill','skillc','checks','defense','fort','will','ref','attack','abilities','item','spellbook','initiative'],
             checkOps={
                 'skill':'All Skills',
                 'skillc':'Combat Skills',
@@ -1953,7 +1955,7 @@ var PFCompanion = PFCompanion || (function() {
                 'will':'Will Save',
                 'ref':'Ref Save',
                 'attack':'Attacks',
-                'ability':'Abilities',
+                'abilities':'Abilities',
                 'item':'Items',
                 'spellbook':'Spellbooks',
                 'initiative':'Initiative'
@@ -2054,7 +2056,7 @@ var PFCompanion = PFCompanion || (function() {
     configHandler = function(who,details){
         var detailKeys = _.keys(details),
             validKeys = [,'hp','ResourceTrack','TAS'],
-            createKeys = [/skill$/,/skillc$/,/checks$/,/defense$/,/attack$/,/ability$/,/item$/,/initiative$/,/spellbook$/,/fort$/,/will$/,/ref$/],
+            createKeys = [/skill$/,/skillc$/,/checks$/,/defense$/,/attack$/,/abilities$/,/item$/,/initiative$/,/spellbook$/,/fort$/,/will$/,/ref$/],
             markerKeys = ['markers','Blinded','Entangled','Invisible','Cowering','Fear','Pinned','Dazzled','Flat-Footed','Prone','Deafened','Grappled','Sickened','Helpless','Stunned'],
             tokenKeys = ['defaultToken','bar1Link','bar1Visible','bar2Link','bar2Visible','bar3Link','bar3Visible'],
             npc,allKeys;
@@ -2371,7 +2373,7 @@ var PFCompanion = PFCompanion || (function() {
         details=details.replace(cmdSep.action,'');
         details = details.length>0 ? details.split(',') : undefined;
         _.each(details,(d)=>{
-            vars=d.match(/(represents|(?:showplayers_)?bar[1-3](?:_link|_value|_max)?|menu|limit|ignore|item|spell|class|ability|misc|current|max|pc|npc|stats|buff|condition|hp|ResourceTrack|TAS|roll|rounds|(?:npc)?(?:skill|skillc|checks|defense|attack|ability|item|initiative|spellbook|fort|ref|will)|Blinded|Entangled|Invisible|Cowering|Fear|Pinned|Dazzled|Flat-Footed|Prone|Deafened|Grappled|Sickened|Helpless|Stunned|markers|defaultToken|bar[1-3](?:Visible|Link))(?:\:|=)(.*)/) || null;
+            vars=d.match(/(represents|(?:showplayers_)?bar[1-3](?:_link|_value|_max)?|menu|limit|ignore|item|spell|class|ability|misc|current|max|pc|npc|stats|buff|condition|hp|ResourceTrack|TAS|roll|rounds|(?:npc)?(?:skill|skillc|checks|defense|attack|abilities|item|initiative|spellbook|fort|ref|will)|Blinded|Entangled|Invisible|Cowering|Fear|Pinned|Dazzled|Flat-Footed|Prone|Deafened|Grappled|Sickened|Helpless|Stunned|markers|defaultToken|bar[1-3](?:Visible|Link))(?:\:|=)(.*)/) || null;
             if(vars){
                 cmdSep.details[vars[1]]= (vars[1]==='limit'||vars[1]==='ignore') ? vars[2].split(/\s+/) : vars[2];
             }else{

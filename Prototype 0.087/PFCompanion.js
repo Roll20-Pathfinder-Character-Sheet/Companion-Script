@@ -26,7 +26,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.087',
         sheetVersion = [1.6,1.53,1.52,1.51],
-        lastUpdate = 1495415602,
+        lastUpdate = 1495419455,
         schemaVersion = 0.087,
         defaults = {
             css: {
@@ -1532,7 +1532,7 @@ var PFCompanion = PFCompanion || (function() {
             await createAttrWithWorker('config-show',iChar.id,attributes,'0');
             statBlock = text.shift();
             parseSection = () =>{
-                block = statBlock.shift();
+                block = statBlock.shift().trim();
                 switch(true){
                     case block.indexOf('DEFENSE')===0:
                         block=block.match(defenseMatch);
@@ -1736,7 +1736,9 @@ var PFCompanion = PFCompanion || (function() {
                     layer:'walls'
                 });
                 setDefaultTokenForCharacter(iChar,token);
+                log(token);
                 token.remove();
+                log(token);
             }
             if(!_.isEmpty(attributesToSet['character_description'])){
                 setAttr = _.find(attributes,(a)=>{return a.get('name')==='character_description'});

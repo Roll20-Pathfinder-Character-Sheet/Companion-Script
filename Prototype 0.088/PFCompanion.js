@@ -16,8 +16,8 @@ var PFCompanion = PFCompanion || (function() {
     'use strict';
 
     var version = 'Prototype 0.088',
-        sheetVersion = [1.6,],
-        lastUpdate = 1495684946,
+        sheetVersion = [1.6],
+        lastUpdate = 1495733963,
         schemaVersion = 0.088,
         defaults = {
             css: {
@@ -141,7 +141,7 @@ var PFCompanion = PFCompanion || (function() {
             }
             state.PFCompanion.defaultToken=state.PFCompanion.defaultToken || {};
             log('  > Updating active automatic features <');
-            //initialize();
+            initialize();
 		};
 		/*if(state.PFCompanion.TAS === 'auto' || state.PFCompanion.ResourceTrack==='on'){
 		    //initialize();
@@ -427,6 +427,7 @@ var PFCompanion = PFCompanion || (function() {
         var rollTemplate,
             spellClass,spontaneous,sourceSpellName,duplicateSpell,spellTrackingButtonField,spellDescButtonField,
             mainAmmo,offAmmo,
+            actualName,
             sourceSpell = getAttrByName(character.id,macroTextObject.get('name').replace((isNPC ? 'NPC-macro-text' : 'macro-text'),'source-spell')),
             abilityTrackingButtonField,abilityDescButtonField,duplicateAbility,abilityName,abilityFrequency,abilityUses,
             sourceAbility = _.find(attributes,(a)=>{return a.get('name')===macroTextObject.get('name').replace(isNPC ? 'NPC-macro-text' : 'macro-text','source-ability')}),
@@ -437,22 +438,25 @@ var PFCompanion = PFCompanion || (function() {
             toAdd = '';
             
         sourceSpellName = sourceSpell ? _.find(attributes,(a)=>{return a.get('name').toLowerCase()==='repeating_spells_'+sourceSpell.toLowerCase()+'_name'}) : undefined;
+        
         if(sourceSpellName){
+            actualName=sourceSpellName.get('current').match(/\[([^\]]+)\]\([^\)]+\)/) ? sourceSpellName.get('current').match(/\[([^\]]+)\]\([^\)]+\)/)[1] : sourceSpellName.get('current');
             spellClass = parseInt(getAttrByName(character.id,'repeating_spells_'+sourceSpell+'_spellclass_number'));
             spontaneous = spellClass>-1 ? (getAttrByName(character.id,'spellclass-'+spellClass+'-casting_type')==='1' ? true : false) : undefined;
-            spellTrackingButtonField = spontaneous!==undefined ? ('{{spelltracking1=[**_**](!pfc --resource,spell='+HE(sourceSpellName.get('current'))+',current=-1|'+character.id+')[**&**](!pfc --resource,spell='+HE(sourceSpellName.get('current'))+',current=+1|'+character.id+')[**?**](!pfc --resource,spell='+HE(sourceSpellName.get('current'))+',current=?'+HE('{')+'Spell Adjustment}|'+character.id+')[**1**](!pfc --resource,spell='+HE(sourceSpellName.get('current'))+',current=0|'+character.id+')}}') : '';
-            spellDescButtonField = '{{spelldescription1=['+HE(sourceSpellName.get('current'))+' Spell Card](~'+HE(character.get('name'))+'|'+sourceSpellName.get('name').replace('_name',(isNPC ? '_npc-roll' : '_roll'))+')}}';
+            spellTrackingButtonField = spontaneous!==undefined ? ('{{spelltracking1=[**_**](!pfc --resource,spell='+HE(sourceSpellName.get('current'))+',current=-1|'+character.id+')[**&**](!pfc --resource,spell='+HE(actualName)+',current=+1|'+character.id+')[**?**](!pfc --resource,spell='+HE(actualName)+',current=?'+HE('{')+'Spell Adjustment}|'+character.id+')[**1**](!pfc --resource,spell='+HE(actualName)+',current=0|'+character.id+')}}') : '';
+            spellDescButtonField = '{{spelldescription1=['+HE(actualName)+' Spell Card](~'+HE(character.get('name'))+'|'+sourceSpellName.get('name').replace('_name',(isNPC ? '_npc-roll' : '_roll'))+')}}';
             duplicateSpell = macroText.match(/{{spelldescription1=.*?(?=}})}}|{{spelltracking1=.*?(?=}})}}/g);
             duplicateSpell = duplicateSpell ? _.reject(duplicateSpell,(d)=>{return (d===spellTrackingButtonField || d===spellDescButtonField)}) : undefined;
         }
         sourceAbility = sourceAbility ? sourceAbility.get('current'):undefined;
         abilityName = sourceAbility ? _.find(attributes,(a)=>{return a.get('name').toLowerCase()==='repeating_ability_'+sourceAbility.toLowerCase()+'_name'}) : undefined;
         if(abilityName){
+            actualName = abilityName.get('current').match(/\[([^\]]+)\]\([^\)]+\)/) ? abilityName.get('current').match(/\[([^\]]+)\]\([^\)]+\)/)[1] : abilityName.get('current');
             abilityUses = _.find(attributes,(a)=>{return a.get('name').toLowerCase()==='repeating_ability_'+sourceAbility.toLowerCase()+'_hasuses'});
             abilityUses = abilityUses ? (abilityUses.get('current')==='1' ? true : false) : false;
             if(abilityUses){
-                abilityTrackingButtonField = '{{abilitytracking1=[**_**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=-1|'+character.id+')[**&**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=+1|'+character.id+')[**?**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=?'+HE('{')+'Ability Adjustment}|'+character.id+')[**1**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=max|'+character.id+')}}'
-                abilityDescButtonField = '{{abilitydescription1=['+HE(abilityName.get('current'))+' Description](~'+character.get('name')+'|'+abilityName.get('name').replace('_name',(isNPC ? '_npc-roll' : '_roll'))+')}}';
+                abilityTrackingButtonField = '{{abilitytracking1=[**_**](!pfc --resource,ability='+HE(actualName)+',current=-1|'+character.id+')[**&**](!pfc --resource,ability='+HE(actualName)+',current=+1|'+character.id+')[**?**](!pfc --resource,ability='+HE(actualName)+',current=?'+HE('{')+'Ability Adjustment}|'+character.id+')[**1**](!pfc --resource,ability='+HE(actualName)+',current=max|'+character.id+')}}'
+                abilityDescButtonField = '{{abilitydescription1=['+HE(actualName)+' Description](~'+character.get('name')+'|'+abilityName.get('name').replace('_name',(isNPC ? '_npc-roll' : '_roll'))+')}}';
                 duplicateAbility = macroText.match(/{{abilitydescription1=.*?(?=}})}}|{{abilitytracking1=.*?(?=}})}}/g);
                 duplicateAbility = duplicateAbility ? _.reject(duplicateAbility,(d)=>{return (d===abilityTrackingButtonField || d===abilityDescButtonField) }) : undefined;
             }
@@ -483,7 +487,7 @@ var PFCompanion = PFCompanion || (function() {
     
     initializeSpell = function(character,macroTextObject,attributes,isNPC,rowID){
         try{
-        var rollTemplate,spontaneous,duplicateSpell,toAdd,itemQuery,spellButtonField,
+        var rollTemplate,spontaneous,duplicateSpell,toAdd,itemQuery,spellButtonField,actualName,
             itemButtonField = '',
             macroText = macroTextObject.get('current'),
             spellClass = parseInt(getAttrByName(character.id,'repeating_spells_'+rowID+'_spellclass_number')),
@@ -492,12 +496,12 @@ var PFCompanion = PFCompanion || (function() {
         if(!spellName){
             return;
         }
-        
+        actualName = spellName.get('current').match(/\[([^\]]+)\]\([^\)]+\)/) ? spellName.get('current').match(/\[([^\]]+)\]\([^\)]+\)/)[1] : spellName.get('current');
         spontaneous = spellClass>-1 ? (getAttrByName(character.id,'spellclass-'+spellClass+'-casting_type')==='1' ? true : false) : undefined;
         if(spontaneous===undefined || !spellName){
             return;
         }
-        spellButtonField = spontaneous!==undefined ? ('{{spelltracking1=[**_**](!pfc --resource,spell='+HE(spellName.get('current'))+',current=-1|'+character.id+')[**&**](!pfc --resource,spell='+HE(spellName.get('current'))+',current=+1|'+character.id+')[**?**](!pfc --resource,spell='+HE(spellName.get('current'))+',current=?'+HE('{')+'Spellcasting Adjustment}|'+character.id+')[**1**](!pfc --resource,spell='+HE(spellName.get('current'))+',current=0|'+character.id+')}}') : '';
+        spellButtonField = spontaneous!==undefined ? ('{{spelltracking1=[**_**](!pfc --resource,spell='+HE(actualName)+',current=-1|'+character.id+')[**&**](!pfc --resource,spell='+HE(actualName)+',current=+1|'+character.id+')[**?**](!pfc --resource,spell='+HE(actualName)+',current=?'+HE('{')+'Spellcasting Adjustment}|'+character.id+')[**1**](!pfc --resource,spell='+HE(actualName)+',current=0|'+character.id+')}}') : '';
         duplicateSpell = macroText.match(/{{spelltracking1=.*?(?=}})}}/g);
         duplicateSpell = duplicateSpell ? _.reject(duplicateSpell,(d)=>{return d===spellButtonField}) : undefined;
         rollTemplate = macroText.match(/(?:&{template:(.*)})/) ? macroText.match(/(?:&{template:([^}]+)})/)[1] : undefined;
@@ -512,7 +516,7 @@ var PFCompanion = PFCompanion || (function() {
     
     initializeAbility = function(character,macroTextObject,attributes,isNPC,rowID){
         try{
-        var rollTemplate,duplicate,abilityButtonField,duplicate,hasUses,
+        var rollTemplate,duplicate,abilityButtonField,duplicate,hasUses,actualName,
             macroText = macroTextObject.get('current'),
             toAdd = '',
             abilityName = _.find(attributes,(a)=>{return a.get('name').toLowerCase()==='repeating_ability_'+rowID.toLowerCase()+'_name'});
@@ -520,10 +524,10 @@ var PFCompanion = PFCompanion || (function() {
         if(!abilityName){
             return;
         }
-        
+        actualName = abilityName.get('current').match(/\[([^\]]+)\]\([^\)]+\)/) ? abilityName.get('current').match(/\[([^\]]+)\]\([^\)]+\)/)[1] : abilityName.get('current');
         hasUses = getAttrByName(character.id,'repeating_ability_'+rowID+'_hasuses') === '1' ? true : false;
         
-        abilityButtonField = '{{abilitytracking1=[**_**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=-1|'+character.id+')[**&**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=+1|'+character.id+')[**?**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=?'+HE('{')+'Ability Adjustment}|'+character.id+')[**1**](!pfc --resource,ability='+HE(abilityName.get('current'))+',current=max|'+character.id+')}}';
+        abilityButtonField = '{{abilitytracking1=[**_**](!pfc --resource,ability='+HE(actualName)+',current=-1|'+character.id+')[**&**](!pfc --resource,ability='+HE(actualName)+',current=+1|'+character.id+')[**?**](!pfc --resource,ability='+HE(actualName)+',current=?'+HE('{')+'Ability Adjustment}|'+character.id+')[**1**](!pfc --resource,ability='+HE(actualName)+',current=max|'+character.id+')}}';
         duplicate = macroText.match(/{{abilitytracking1=.*?(?=}})}}/g);
         duplicate = duplicate ? _.reject(duplicate,(d)=>{return d===abilityButtonField}) : undefined;
         duplicate ? _.each(duplicate,(d)=>{macroText = macroText.replace(d,'')}) : undefined;
@@ -538,14 +542,15 @@ var PFCompanion = PFCompanion || (function() {
     
     initializeItem = function(character,macroTextObject,attributes,isNPC,rowID){
         try{
-        var rollTemplate,duplicate,itemButtonField,
+        var rollTemplate,duplicate,itemButtonField,actualName,
             macroText = macroTextObject.get('current'),
             toAdd = '',
             itemName = _.find(attributes,(a)=>{return a.get('name').toLowerCase()==='repeating_item_'+rowID.toLowerCase()+'_name'});
         if(!itemName){
             return;
         }
-        itemButtonField = '{{itemtracking1=[**_**](!pfc --resource,item='+HE(itemName.get('current'))+',current=-1|'+character.id+')[**&**](!pfc --resource,item='+HE(itemName.get('current'))+',current=+1|'+character.id+')[**?**](!pfc --resource,item='+HE(itemName.get('current'))+',current=?'+HE('{')+HE(itemName.get('current'))+' Adjustment}|'+character.id+')[**1**](!pfc --resource,item='+HE(itemName.get('current'))+',current=max|'+character.id+')}}';
+        actualName = itemName.get('current').match(/\[([^\]]+)\]\([^\)]+\)/) ? itemName.get('current').match(/\[([^\]]+)\]\([^\)]+\)/)[1] : itemName.get('current');
+        itemButtonField = '{{itemtracking1=[**_**](!pfc --resource,item='+HE(actualName)+',current=-1|'+character.id+')[**&**](!pfc --resource,item='+HE(actualName)+',current=+1|'+character.id+')[**?**](!pfc --resource,item='+HE(actualName)+',current=?'+HE('{')+HE(actualName)+' Adjustment}|'+character.id+')[**1**](!pfc --resource,item='+HE(actualName)+',current=max|'+character.id+')}}';
         duplicate = macroText.match(/{{itemtracking1=.*?(?=}})}}/g);
         duplicate = duplicate ? _.reject(duplicate,(d)=>{return d===itemButtonField}) : undefined;
         duplicate ? _.each(duplicate,(d)=>{macroText = macroText.replace(d,'')}) : undefined;
@@ -559,7 +564,7 @@ var PFCompanion = PFCompanion || (function() {
     
     checkForCustomTracking = function(description){
         try{
-        var rowID = extractRowID(description.get('name')),
+        var rowID = extractRowID(description.get('name')),actualName,
             attributes = findObjs({type:'attribute',characterid:description.get('characterid')}),
             sectionType = description.get('name').match(/weapon|spells|item|ability/) ? description.get('name').match(/weapon|spells|item|ability/)[0] : undefined,
             isNPC = getAttrByName(description.get('characterid'),'is_npc')==='0' ? false: true,
@@ -724,9 +729,14 @@ var PFCompanion = PFCompanion || (function() {
     handleAmmoCommand = function(ammo,character,changeCurrent,changeMax){
         try{
         var attributes=findObjs({type:'attribute',characterid:character.id}),
-            ammoNameAttr,rowID,ammoAttr,insufficient;
+            ammoNameAttr,rowID,ammoAttr,insufficient,actualName;
             
-        ammoNameAttr = _.find(attributes,(a)=>{return a.get('name').match(/repeating_item_[^_]+_name/) && a.get('current')===ammo});
+        ammoNameAttr = _.find(attributes,(a)=>{
+            if(a.get('name').match(/repeating_item_[^_]+_name/)){
+                actualName = a.get('current').match(/\[([^\]]+)\]\([^\)]+\)/) ? a.get('current').match(/\[([^\]]+)\]\([^\)]+\)/)[1] : a.get('current');
+                return  actualName===ammo;
+            }
+        });
         rowID = ammoNameAttr ? extractRowID(ammoNameAttr.get('name')) : undefined;
         ammoAttr = rowID ? _.find(attributes,(a)=>{return a.get('name')===('repeating_item_'+rowID+'_qty')}) : undefined;
         if(ammoAttr){
@@ -744,9 +754,14 @@ var PFCompanion = PFCompanion || (function() {
         var attributes = findObjs({type:'attribute',characterid:character.id}),
             manualTotal = getAttrByName(character.id,'total_spells_manually')==='0' ? false : true,
             isNPC = getAttrByName(character.id,'is_npc')==='0' ? false : true,
-            workerWait,attrToID,spellNameAttr,rowID,spellUsedAttr,insufficient,spontaneous,spellMax,spellLevel,spellMaxValue;
+            workerWait,attrToID,spellNameAttr,rowID,spellUsedAttr,insufficient,spontaneous,spellMax,spellLevel,spellMaxValue,actualName;
             
-        spellNameAttr = _.find(attributes,(a)=>{return a.get('name').match(/repeating_spells_-[^_]+_name/) && a.get('current')===spell});
+        spellNameAttr = _.find(attributes,(a)=>{
+            if(a.get('name').match(/repeating_spells_-[^_]+_name/)){
+                actualName = a.get('current').match(/\[([^\]]+)\]\([^\)]+\)/) ? a.get('current').match(/\[([^\]]+)\]\([^\)]+\)/)[1] : a.get('current');
+                return  actualName===spell;
+                }
+        });
         rowID = spellNameAttr ? extractRowID(spellNameAttr.get('name')) : undefined;
         if(!rowID){
             return;
@@ -802,7 +817,12 @@ var PFCompanion = PFCompanion || (function() {
         var attributes=findObjs({type:'attribute',characterid:character.id}),
             abilityNameAttr,rowID,abilityAttr,insufficient;
         
-        abilityNameAttr = _.find(attributes,(a)=>{return a.get('name').match(/repeating_ability_[^_]+_name/) && a.get('current')===ability});
+        abilityNameAttr = _.find(attributes,(a)=>{
+            if(a.get('name').match(/repeating_ability_[^_]+_name/)){ 
+                actualName = a.get('current').match(/\[([^\]]+)\]\([^\)]+\)/) ? a.get('current').match(/\[([^\]]+)\]\([^\)]+\)/)[1] : a.get('current');
+                return  actualName===ability;
+            }
+        });
         rowID = abilityNameAttr ? extractRowID(abilityNameAttr.get('name')) : undefined;
         abilityAttr = rowID ? _.find(attributes,(a)=>{return a.get('name')===('repeating_ability_'+rowID+'_used')}) : undefined;
         if(abilityAttr){
@@ -824,7 +844,12 @@ var PFCompanion = PFCompanion || (function() {
             noteNameAttr,rowID,noteAttr,insufficient,money,altMax,spellClass;
             
         if(!note.match(/[GSCP]P|spell\s*points/i)){
-            noteNameAttr = _.find(attributes,(a)=>{return a.get('current')===note && a.get('name').match(/custom[ac]\d+-name/)});
+            noteNameAttr = _.find(attributes,(a)=>{
+                if(a.get('name').match(/custom[ac]\d+-name/)){
+                    actualName = a.get('current').match(/\[([^\]]+)\]\([^\)]+\)/) ? a.get('current').match(/\[([^\]]+)\]\([^\)]+\)/)[1] : a.get('current');
+                    return  actualName===ammo;
+                }
+            });
             rowID = noteNameAttr ? noteNameAttr.get('name').match(/(?:custom([abc]\d+)-name)/) : undefined;
             rowID = rowID ? (!rowID[1].match(/10|11|12/) ? rowID[1] : undefined) : undefined;
             noteAttr = rowID ? _.find(attributes,(a)=>{return a.get('name')==='custom'+rowID+'-mod'}) : undefined;
@@ -1305,7 +1330,6 @@ var PFCompanion = PFCompanion || (function() {
     //problem is how the default token's bar values/maxes are set
     updateAllTokens = async function(character,graphic){
         try{
-            log('updatealltokens');
         var tokens = findObjs({type:'graphic',represents:character.id}),
             tok,barValues,
             defaultToken,

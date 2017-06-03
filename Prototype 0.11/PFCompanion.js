@@ -2692,7 +2692,6 @@ var PFCompanion = PFCompanion || (function() {
                     break;
                 case 'buffstatus':
                     if(characters){
-                        log(characters);
                         if(playerIsGM(msg.playerid) || characters[0].get('controlledby').match(/all/i) || characters[0].get('controlledby').match(msg.playerid)){
                             buffSetup(characters[0],cmdDetails.details.buff,cmdDetails.details.markers,who);
                         }

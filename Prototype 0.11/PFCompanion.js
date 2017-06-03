@@ -17,7 +17,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.11',
         sheetVersion = [1.61],
-        lastUpdate = 1495733963,
+        lastUpdate = 1496515503,
         schemaVersion = 0.11,
         defaults = {
             css: {
@@ -2398,14 +2398,14 @@ var PFCompanion = PFCompanion || (function() {
             
         statusQuery += statusquery.join('|')+'}';
         return (menu==='marker' || !menu) ? '<div style="border-top: 1px solid #000000; border-radius: .2em; background-color: white;">'//markermsg div start
-                +'<b>Apply Condition/Buff Statusmarkers:</b><br>'+(!menu ? '<span style="font-family:pictos;">'+makeButton('!pfc --config,menu=marker','l','transparent','black','Configure condition markers')+'</span>' : '')+'<div style="float:right;">'+makeButton('!pfc --config,markers='+(state.PFCompanion.markers.markers==='on' ? 'off' : 'on')+' --config'+(state.PFCompanion.markers.markers==='on' ? '' : 'menu=marker'),(state.PFCompanion.markers.markers==='on' ? 'ON' : 'OFF'),(state.PFCompanion.markers.markers==='on' ? 'green' : 'red'),'black','Apply statusmarkers based on conditions/buffs')+'</div><div style="clear: both"></div>'
+                +'<b>Apply Condition/Buff Statusmarkers:</b><br>'+(!menu ? '<span style="font-family:pictos;">'+makeButton('!pfc --config,menu=marker','l','transparent','black','Configure condition markers')+'</span>' : '')+'<div style="float:right;">'+makeButton('!pfc --config,markers='+(state.PFCompanion.markers.markers==='on' ? 'off' : 'on')+' --config'+(state.PFCompanion.markers.markers==='on' ? '' :',menu=marker'),(state.PFCompanion.markers.markers==='on' ? 'ON' : 'OFF'),(state.PFCompanion.markers.markers==='on' ? 'green' : 'red'),'black','Apply statusmarkers based on conditions/buffs')+'</div><div style="clear: both"></div>'
                 +((menu==='marker' && state.PFCompanion.markers.markers=='on') ? '<div style="padding: 0em 2em;">'
                     +_.map(conditions,(c)=>{
                         return c+'<div style="float:right;">'+makeStatusButton('!pfc --config,'+c+'='+HE('?{'+c+' status marker'+statusQuery) + ' --config,menu=marker',state.PFCompanion.markers[c],c)+'</div><div style="clear: both"></div>';
                     }).join('')
-                +'</div>'+makeButton('!pfc --config','MAIN MENU','transparent','black')
                 :
                 '')
+                +(menu==='marker' ? '</div>'+makeButton('!pfc --config','MAIN MENU','transparent','black') : '')
                 +'</div>' : '';
     },
     
@@ -2465,6 +2465,7 @@ var PFCompanion = PFCompanion || (function() {
             
         allKeys = validKeys.concat(markerKeys,createKeys,tokenKeys);
         if(!_.some(allKeys,(ak)=>{return _.some(detailKeys,(dk)=>{return (dk.match(ak))})}) || _.indexOf(detailKeys,'menu')>-1){
+            log('assemble');
             configAssembler(who,details.menu);
             return;
         }
@@ -2498,6 +2499,7 @@ var PFCompanion = PFCompanion || (function() {
         var msg = _.clone(msg_orig),
             who = idToDisplayName(msg.playerid),
 			args,cmdDetails,characters,folders;
+			
 		if(msg.type !== 'api'){
             if(msg.rolltemplate){
                 if(msg.rolltemplate.indexOf('pf')===0){
@@ -2690,6 +2692,7 @@ var PFCompanion = PFCompanion || (function() {
                     break;
                 case 'buffstatus':
                     if(characters){
+                        log(characters);
                         if(playerIsGM(msg.playerid) || characters[0].get('controlledby').match(/all/i) || characters[0].get('controlledby').match(msg.playerid)){
                             buffSetup(characters[0],cmdDetails.details.buff,cmdDetails.details.markers,who);
                         }

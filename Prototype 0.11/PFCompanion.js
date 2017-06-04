@@ -17,7 +17,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.11',
         sheetVersion = [1.61],
-        lastUpdate = 1496515503,
+        lastUpdate = 1496592091,
         schemaVersion = 0.11,
         defaults = {
             css: {
@@ -818,7 +818,7 @@ var PFCompanion = PFCompanion || (function() {
     handleAbilityCommand = function(ability,character,abilityClass,changeCurrent,changeMax){
         try{
         var attributes=findObjs({type:'attribute',characterid:character.id}),
-            abilityNameAttr,rowID,abilityAttr,insufficient;
+            abilityNameAttr,rowID,abilityAttr,insufficient,actualName;
         
         abilityNameAttr = _.find(attributes,(a)=>{
             if(a.get('name').match(/repeating_ability_[^_]+_name/)){ 
@@ -844,7 +844,7 @@ var PFCompanion = PFCompanion || (function() {
         try{
         var attributes = findObjs({type:'attribute',characterid:character.id}),
             isNPC = getAttrByName(character.id,'is_npc')==='0' ? false : true,
-            noteNameAttr,rowID,noteAttr,insufficient,money,altMax,spellClass;
+            noteNameAttr,rowID,noteAttr,insufficient,money,altMax,spellClass,actualName;
             
         if(!note.match(/[GSCP]P|spell\s*points/i)){
             noteNameAttr = _.find(attributes,(a)=>{
@@ -2887,6 +2887,7 @@ var PFCompanion = PFCompanion || (function() {
                     sheetCompat=false;
                 }
             }
+            return;
         }
         if(!sheetCompat){
             return;
@@ -3070,20 +3071,20 @@ var PFCompanion = PFCompanion || (function() {
         var index;
         switch(event){
             case 'add':
-                if(_.every([1,2,3],(n)=>{return _.isEmpty(token.get('bar'+n+'_link'))})){
-                    tIDs.push(token.id);
-                }
+                tIDs.push(token.id);
                 break;
             case 'change':
                 if((index =_.indexOf(tIDs,token.id))>-1){
-                    var tokenNames = _.chain(findObjs({type:'graphic',represents:token.get('represents'),pageid:token.get('pageid')}))
-                            .reject((t)=>{return t.id===token.id})
-                            .map((t)=>{return t.get('name').replace(token.get('name')+' ','')*1 || 0})
-                            .reject((t)=>{return _.isNull(t)})
-                            .value(),
-                        number;
-                    number = _.isEmpty(tokenNames) ? 1 : _.max(tokenNames)+ 1;
-                    token.set('name',token.get('name')+' '+number);
+                    if(_.every([1,2,3],(n)=>{log('bar'+n+': '+token.get('bar'+n+'_link'));return _.isEmpty(token.get('bar'+n+'_link'))})){
+                        var tokenNames = _.chain(findObjs({type:'graphic',represents:token.get('represents'),pageid:token.get('pageid')}))
+                                .reject((t)=>{return t.id===token.id})
+                                .map((t)=>{return t.get('name').replace(token.get('name')+' ','')*1 || 0})
+                                .reject((t)=>{return _.isNull(t)})
+                                .value(),
+                            number;
+                        number = _.isEmpty(tokenNames) ? 1 : _.max(tokenNames)+ 1;
+                        token.set('name',token.get('name')+' '+number);
+                    }
                     tIDs.splice(index,1);
                 }
                 break;

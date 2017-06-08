@@ -2662,6 +2662,7 @@ var PFCompanion = PFCompanion || (function() {
                         if(cmdDetails.details.roll.match(/init/i)){
                             if(cmdDetails.details.clear){
                                 Campaign().set({turnorder:'',initiativepage:false});
+				break;
                             }
                             tokens = _.chain(msg.selected)
                                 .map((s)=>{

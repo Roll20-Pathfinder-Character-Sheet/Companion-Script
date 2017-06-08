@@ -17,7 +17,7 @@ var PFCompanion = PFCompanion || (function() {
 
     var version = 'Prototype 0.12',
         sheetVersion = [1.61,1.6],
-        lastUpdate = 1496930279,
+        lastUpdate = 1496932088,
         schemaVersion = 0.12,
         defaults = {
             css: {
@@ -1611,8 +1611,7 @@ var PFCompanion = PFCompanion || (function() {
                 'sleight of hand':'Sleight of Hand','stealth':'Stealth','survival':'Survival','swim':'Swim','use magic device':'Use Magic Device',
                 'misc':'Misc-Skill-0','initiative':'Initiative'
             },
-            turnTracker = Campaign().get('turnorder'),
-            roll,note;
+            turnTracker,roll,note;
             
         rollName = roll.toLowerCase().match(/fort|ref|will|acrobatics|appraise|bluff|climb|craft|diplomacy|disable device|disguise|escape artist|fly|handle animal|heal|intimidate|arcana|dungeoneering|engineering|geography|history|local|nobility|planes|religion|linguistics|perception|perform|profession|ride|sense motive|sleight of hand|stealth|survival|swim|use magic device|misc|initiative/);
         rollName = rollName ? rollName[0] : undefined;
@@ -1621,6 +1620,7 @@ var PFCompanion = PFCompanion || (function() {
             return;
         }
         if(rollName === 'initiative'){
+            turnTracker = Campaign().get('turnorder');
             Campaign().set('initiativepage',characters[0].get('pageid'));
             turnTracker = !_.isEmpty(turnTracker) ? JSON.parse(turnTracker) : [];
         }

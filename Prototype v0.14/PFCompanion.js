@@ -15,10 +15,10 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
 var PFCompanion = PFCompanion || (function() {
     'use strict';
 
-    var version = 'Prototype 0.14',
+    var version = 'Prototype 0.15',
         sheetVersion = [1.61,1.6],
-        lastUpdate = 1496949828,
-        schemaVersion = 0.14,
+        lastUpdate = 1496961265,
+        schemaVersion = 0.15,
         defaults = {
             css: {
                 button: {
@@ -60,7 +60,7 @@ var PFCompanion = PFCompanion || (function() {
 			'-' : 'mdash',
 			' ' : 'nbsp'
 		};
-
+		
 		if(_.has(entities,c) ){
 			return ('&'+entities[c]+';');
 		}
@@ -97,7 +97,7 @@ var PFCompanion = PFCompanion || (function() {
             return s.replace(re, function(c){ return entities[c] || c; });
         };
     }()),
-    //nam,id,attributes,curr,mx
+    
     checkSheetVersion = async function(){
         var character = createObj('character',{name:'Version Check'}),
             sVersion,
@@ -112,11 +112,10 @@ var PFCompanion = PFCompanion || (function() {
     
     checkInstall = async function(){
         var check = await checkSheetVersion();
-        log(check);
         if(check){
             sheetCompat=true;
         }else{
-            sendChat('Pathfinder Companion','This version of the Neceros Pathfinder Sheet Companion is only compatible with sheet version '+sheetVersion.join(',')
+            sendChat('Pathfinder Companion','This version of the Neceros Pathfinder Sheet Companion is only compatible with sheet version '+sheetVersion.join(' or ')
             +'. You do not appear to be using the correct Neceros Pathfinder sheet, please switch to the appropriate sheet, or the companion script for your '
             +'sheet. The script has not initialized and will not respond to events or commands.',null,{noarchive:true});
             return;
@@ -157,11 +156,6 @@ var PFCompanion = PFCompanion || (function() {
             log('  > Updating active automatic features <');
             initialize();
 		};
-		/*if(state.PFCompanion.TAS === 'auto' || state.PFCompanion.ResourceTrack==='on'){
-		    //initialize();
-		}else{
-		    log('  > Pathfinder Companion: No Initialization Options Enabled <');
-		}*/
 		generateHelp();
 		buildTemplates();
 	},
@@ -1623,6 +1617,7 @@ var PFCompanion = PFCompanion || (function() {
                 'sleight of hand':'Sleight of Hand','stealth':'Stealth','survival':'Survival','swim':'Swim','use magic device':'Use Magic Device',
                 'misc':'Misc-Skill-0','initiative':'Initiative'
             },
+            mArray=[],
             turnTracker,roll,note;
             
         rollName = roll.toLowerCase().match(/fort|ref|will|acrobatics|appraise|bluff|climb|craft|diplomacy|disable device|disguise|escape artist|fly|handle animal|heal|intimidate|arcana|dungeoneering|engineering|geography|history|local|nobility|planes|religion|linguistics|perception|perform|profession|ride|sense motive|sleight of hand|stealth|survival|swim|use magic device|misc|initiative/);
@@ -1656,13 +1651,20 @@ var PFCompanion = PFCompanion || (function() {
                 }else{
                     turnTracker.push({pr:(roll+mod+(mod/100)),id:c.id,custom:'',formula:''});
                 }
-                rollMsg += '{{['+c.get('name')+'](https://journal.roll20.net/character/'+c.get('represents')+')=[['+roll+' + '+mod+'+'+mod/100+((roll===20||roll===1) ? '+1d0'+(roll===1 ? 'cf>0cs>1' : 'cs>0') : '')+']] }}';
+                mArray.push({result:(roll+mod),msg:'{{['+c.get('name')+'](https://journal.roll20.net/character/'+c.get('represents')+')=[['+roll+' + '+mod+'+'+mod/100+((roll===20||roll===1) ? '+1d0'+(roll===1 ? 'cf>0cs>1' : 'cs>0') : '')+']] }}',note:getAttrByName(c.get('represents') || c.id,(rollName.match(/fort|ref|will/i) ? 'Save-notes' : attrOp[rollName]+'-note'))});
             }else{
                 rollMsg += '{{['+c.get('name')+'](https://journal.roll20.net/character/'+c.id+')=[[1d20 + @{'+c.get('name')+'|'+attrOp[rollName]+'}]] }}';
+                note = getAttrByName(c.get('represents') || c.id,(rollName.match(/fort|ref|will/i) ? 'Save-notes' : attrOp[rollName]+'-note'));
+                notes+= !_.isEmpty(note) ? ((_.isEmpty(notes) ? '{{' : '<br>')+c.get('name')+': **'+note+'**') : '';
             }
-            note = getAttrByName(c.get('represents') || c.id,(rollName.match(/fort|ref|will/i) ? 'Save-notes' : attrOp[rollName]+'-note'));
-            notes+= !_.isEmpty(note) ? ((_.isEmpty(notes) ? '{{' : '<br>')+c.get('name')+': **'+note+'**') : '';
         });
+        if(!_.isEmpty(mArray)){
+            mArray = sort ? _.sortBy(mArray,(m)=>{return m.result*-1}) : mArray;
+            _.each(mArray,(m)=>{
+                rollMsg+=m.msg;
+                notes+= !_.isEmpty(m.note) ? ((_.isEmpty(notes) ? '{{' : '<br>')+c.get('name')+': **'+m.note+'**') : '';
+            });
+        }
         rollMsg+=notes+(_.isEmpty(notes) ? '':'}}');
         if(turnTracker){
             if(sort){
@@ -2436,7 +2438,7 @@ var PFCompanion = PFCompanion || (function() {
         return !menu ? '<div style="border-top: 1px solid #000000; border-radius: .2em; background-color: white;">'//markermsg div start
                 +'<b>Maintain PC Default Tokens:</b><div style="float:right;">'+makeButton('!pfc --config,defaultToken='+(state.PFCompanion.defaultToken.enable==='on' ? 'off' : 'on')+' --config',(state.PFCompanion.defaultToken.enable==='on' ? 'ON' : 'OFF'),(state.PFCompanion.defaultToken.enable==='on' ? 'green' : 'red'),'black','Keep non-mook character'+ch("'")+'s default tokens updated when anything but bar values changes.')+'</div><div style="clear: both"></div>'
                 +(state.PFCompanion.defaultToken.enable==='on' ? 
-                '<table style="width:100%;table-layout:fixed;overflow:hidden;word-break:break-all;">'
+                '<table style="width:100%;table-layout:fixed;overflow:hidden;word-break:break-all;text-align:center;">'
                     +'<colgroup>'
                         +'<col span="4" style="width:25%;">'
                     +'</colgroup>'
@@ -2662,7 +2664,7 @@ var PFCompanion = PFCompanion || (function() {
                         if(cmdDetails.details.roll.match(/init/i)){
                             if(cmdDetails.details.clear){
                                 Campaign().set({turnorder:'',initiativepage:false});
-				break;
+                                break;
                             }
                             tokens = _.chain(msg.selected)
                                 .map((s)=>{

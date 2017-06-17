@@ -1,5 +1,7 @@
 THIS IS STILL BETA SO USE ON A COPY OF YOUR CAMPAIGN OR CHARACTERS. The API can access multiple characters at once so it is best to backup first.
 
+*****NOTE****** This version requires the PathMath script available from the one-click Drop-down
+
 To start up type:
 !pfc --help
 

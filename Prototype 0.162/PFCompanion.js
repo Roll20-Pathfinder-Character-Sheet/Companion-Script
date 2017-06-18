@@ -15,10 +15,10 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
 *Feat/Ability/Spell import
 */
 
-    var version = 'Prototype 0.162',
+    var version = 'Prototype 0.16',
         sheetVersion = [1.62,1.63],
-        lastUpdate = 1497709907,
-        schemaVersion = 0.162,
+        lastUpdate = 1497752895,
+        schemaVersion = 0.16,
         defaults = {
             css: {
                 button: {
@@ -111,7 +111,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
     
     checkInstall = async function(){
         var check = await checkSheetVersion();
-        if(check || sheetCompat===true){
+        if(check || sheetCompat){
             sheetCompat=true;
         }else{
             sendChat('Pathfinder Companion','/w gm This version of the Neceros Pathfinder Sheet Companion is only compatible with sheet version '+sheetVersion.join(' or ')
@@ -1693,412 +1693,412 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
     
     statblockHandler = async function(text,characters,who){
         try{
-        var block,iChar,blockSection,attributes,accrue,attributesToSet,description,setAttr,attrWorker,section,keys,parser,parseSection,statBlock,keyWorker,usesSpells,charListLength,tokenImage,token,page,
-            spellsToCreate=[],
-            convert = {
-                'defense':[null,'ac_compendium','npc_hp_compendium','fort_compendium','ref_compendium','will_compendium','npc-defensive-abilities','dr_compendium','immunities','resistances','sr_compendium','weaknesses'],
-                'offense':[null,'speed_compendium','npc-melee-attacks-text','npc-ranged-attacks-text','space_compendium','reach_compendium','npc-special-attacks','spells',],
-                'statistics':[null,'str_compendium','dex_compendium','con_compendium','int_compendium','wis_compendium','cha_compendium','bab_compendium','cmb_compendium','cmd_compendium','npc-feats-text','skills_compendium','racial_mods_compendium','languages','SQ_compendium','gear1','gear2'],
-                'tactics':[null,'tactics'],
-                'ecology':[null,'ecology'],
-                'special abilities':[null,'content_compendium'],
-                'gear':[null,'gear'],
-                'long description':[null,'long description'],
-                'default':[null,'avatar','token','description','character_name','cr_compendium','xp_compendium','class','alignment','size_compendium','type_compendium','subtype','init_compendium','senses_compendium','weaknesses','npc-aura']
-            },
-            defenseMatch=/DEFENSE\n+(AC\s+[^\n]+)\n+hp\s+([^\n]+)\n+Fort\s+([^,;]+)(?:,|;)\s+Ref\s+([^,;]+)(?:,|;)\s+Will\s+([^\n]+)\n+(?:Defensive\s+Abilities\s+([^;\n]+))?(?:;|\n+|\s+)?(?:DR\s+([^;\n]+);)?(?:\s+)?(?:Immune\s([^;\n]+)(?:;)?)?(?:\s+)?(?:Resist\s+([^;\n]+);)?(?:\s+)?(?:SR\s+(\d+))?(?:\n+)?(?:Weaknesses\s+([^\n]+))?/,
-            offenseMatch=/OFFENSE\n+Speed\s+([^\n]+)\n+(?:Melee\s+([^\n]+)(?:\n+)?)?(?:Ranged\s+([^\n]+)(?:\n+)?)?(?:Space\s+([^;]+);)?(?:\s+Reach\s+([^\n]+)(?:\n+)?)?(?:Special Attacks\s+([^\n]+))?(?:\n+)?(?:(.*?(?:Spell-Like Abilities|Psychic Magic|Spells Prepared|Spells Known)\s+.+\n+(?:.+\n*)+))?/,
-            tacticsMatch=/(TACTICS\n+.+\n+(?:.+(?:\n+)?)+)/,
-            statisticsMatch=/STATISTICS\n+Str\s+([^,]+),\s+Dex\s+([^,]+),\s+Con\s+([^,]+),\s+Int\s+([^,]+),\s+Wis\s+([^,]+),\s+Cha\s+([^\n]+)\n+Base Atk\s+(\+\d+);\s+CMB\s+([^;]+);\s+CMD\s+([^\n]+)(?:\n+)?(?:Feats\s+([^\n]+)(?:\n+)?)?(?:Skills\s+([^\n;]+)(?:;\s+Racial Modifiers\s+([^\n]+))?)?(?:\n+)?(?:Languages\s+([^\n]+))?(?:\n+)?(?:SQ\s+([^\n]+))?(?:\n+)?((?:Combat Gear|Other Gear)\s+[^;\n]+|Gear\n(?:.*(?:\n+)?)+)?(?:;)?(Other Gear\s+[^;\n]+)?(?:\n+)?(.*$)?/,
-            saMatch=/((?:SPECIAL ABILITIES)\n+(?:.*(?:\n+)?)+)/,
-            ecologyMatch=/((?:ECOLOGY)\n+(?:.*(?:\n+)?)+)/,
-            defaultMatch=/(?:Avatar\s+([^\n]+)\n+)?(?:Token\s+([^\n]+)\n+)?(?:([^\n]+)\n+)?([^\t]+)\s*CR\s+([^\n]+)\n+XP\s+([^\n]+)\n+(?:([^\n]+)\n+)??(LG|NG|CG|LN|N|CN|LE|NE|CE)\s+(Fine|Diminutive|Tiny|Small|Medium|Large|Huge|Gargantuan|Colossal)\s+([\w\s]+)(?:\s+(\([\w\s,]+\)))?\n+Init\s+([^;]+);\s+Senses\s+((?:[^;]+;\s+)?Perception\s+[^\n]+)(?:\n+)?(?:Weakness\s+([^\n]+)\n+)?(?:Aura\s+([^\n]+)\n+)?/,
-            gearMatch=/((?:GEAR)\n+(?:.*(?:\n+)?)+)/,
-            descriptionMatch = /LONG DESCRIPTION\n+((?:.+|\n+)+)/,
-            charList=[],
-            start = _.now();
-            
-        text =_.chain(text.replace(/<br\/>/g,'').replace(/<br>/g,'\n').replace(/\n+--------------------/g,'').split(/(?:\n+)?NEW CREATURE(?:\n+)?/))
-            .map((t)=>{
-                return t.replace(/\ndefense\n/i,'___STATBLOCK PARSE SITE___ DEFENSE\n').replace(/\noffense\n/i,'___STATBLOCK PARSE SITE___ OFFENSE\n').replace(/\ntactics\n/i,'___STATBLOCK PARSE SITE___ TACTICS\n').replace(/\nstatistics\n/i,'___STATBLOCK PARSE SITE___ STATISTICS\n').replace(/\nspecial abilities\n/i,'___STATBLOCK PARSE SITE___ SPECIAL ABILITIES\n').replace(/\necology\n/i,'___STATBLOCK PARSE SITE___ ECOLOGY\n').replace(/\ngear\n/i,'___STATBLOCK PARSE SITE___ GEAR\n').replace(/\nlong description\n/i,'___STATBLOCK PARSE SITE___ LONG DESCRIPTION\n').split('___STATBLOCK PARSE SITE___ ');
-            })
-            .reject((t)=>{return(_.isUndefined(t) || _.isEmpty(t))})
-            .value();
-        sendChat('Pathfinder Companion Statblock Parser','/w "'+who+'" Statblock parsing and import of '+text.length+' statblock'+(text.length>1 ? 's':'')+' started. As creatures are successfully parsed, notifications will be sent to chat. Please do not send further API commands until parsing is complete. Newly imported sheets may be unresponsive for a while after import as the sheetworkers finish firing.',null,{noarchive:true});
-        if(characters){
-            if(characters.length<text.length){
-                for(var l = characters.length;l<text.length;l++){
+            var block,iChar,blockSection,attributes,accrue,attributesToSet,description,setAttr,attrWorker,section,keys,parser,parseSection,statBlock,keyWorker,usesSpells,charListLength,tokenImage,token,page,
+                spellsToCreate=[],
+                convert = {
+                    'defense':[null,'ac_compendium','npc_hp_compendium','fort_compendium','ref_compendium','will_compendium','npc-defensive-abilities','dr_compendium','immunities','resistances','sr_compendium','weaknesses'],
+                    'offense':[null,'speed_compendium','npc-melee-attacks-text','npc-ranged-attacks-text','space_compendium','reach_compendium','npc-special-attacks','spells',],
+                    'statistics':[null,'str_compendium','dex_compendium','con_compendium','int_compendium','wis_compendium','cha_compendium','bab_compendium','cmb_compendium','cmd_compendium','npc-feats-text','skills_compendium','racial_mods_compendium','languages','SQ_compendium','gear1','gear2'],
+                    'tactics':[null,'tactics'],
+                    'ecology':[null,'ecology'],
+                    'special abilities':[null,'content_compendium'],
+                    'gear':[null,'gear'],
+                    'long description':[null,'long description'],
+                    'default':[null,'avatar','token','description','character_name','cr_compendium','xp_compendium','class','alignment','size_compendium','type_compendium','subtype','init_compendium','senses_compendium','weaknesses','npc-aura']
+                },
+                defenseMatch=/DEFENSE\n+(AC\s+[^\n]+)\n+hp\s+([^\n]+)\n+Fort\s+([^,;]+)(?:,|;)\s+Ref\s+([^,;]+)(?:,|;)\s+Will\s+([^\n]+)\n+(?:Defensive\s+Abilities\s+([^;\n]+))?(?:;|\n+|\s+)?(?:DR\s+([^;\n]+);)?(?:\s+)?(?:Immune\s([^;\n]+)(?:;)?)?(?:\s+)?(?:Resist\s+([^;\n]+);)?(?:\s+)?(?:SR\s+(\d+))?(?:\n+)?(?:Weaknesses\s+([^\n]+))?/,
+                offenseMatch=/OFFENSE\n+Speed\s+([^\n]+)\n+(?:Melee\s+([^\n]+)(?:\n+)?)?(?:Ranged\s+([^\n]+)(?:\n+)?)?(?:Space\s+([^;]+);)?(?:\s+Reach\s+([^\n]+)(?:\n+)?)?(?:Special Attacks\s+([^\n]+))?(?:\n+)?(?:(.*?(?:Spell-Like Abilities|Psychic Magic|Spells Prepared|Spells Known)\s+.+\n+(?:.+\n*)+))?/,
+                tacticsMatch=/(TACTICS\n+.+\n+(?:.+(?:\n+)?)+)/,
+                statisticsMatch=/STATISTICS\n+Str\s+([^,]+),\s+Dex\s+([^,]+),\s+Con\s+([^,]+),\s+Int\s+([^,]+),\s+Wis\s+([^,]+),\s+Cha\s+([^\n]+)\n+Base Atk\s+(\+\d+);\s+CMB\s+([^;]+);\s+CMD\s+([^\n]+)(?:\n+)?(?:Feats\s+([^\n]+)(?:\n+)?)?(?:Skills\s+([^\n;]+)(?:;\s+Racial Modifiers\s+([^\n]+))?)?(?:\n+)?(?:Languages\s+([^\n]+))?(?:\n+)?(?:SQ\s+([^\n]+))?(?:\n+)?((?:Combat Gear|Other Gear)\s+[^;\n]+|Gear\n(?:.*(?:\n+)?)+)?(?:;)?(Other Gear\s+[^;\n]+)?(?:\n+)?(.*$)?/,
+                saMatch=/((?:SPECIAL ABILITIES)\n+(?:.*(?:\n+)?)+)/,
+                ecologyMatch=/((?:ECOLOGY)\n+(?:.*(?:\n+)?)+)/,
+                defaultMatch=/(?:Avatar\s+([^\n]+)\n+)?(?:Token\s+([^\n]+)\n+)?(?:([^\n]+)\n+)?([^\t]+)\s*CR\s+([^\n]+)\n+XP\s+([^\n]+)\n+(?:([^\n]+)\n+)??(LG|NG|CG|LN|N|CN|LE|NE|CE)\s+(Fine|Diminutive|Tiny|Small|Medium|Large|Huge|Gargantuan|Colossal)\s+([\w\s]+)(?:\s+(\([\w\s,]+\)))?\n+Init\s+([^;]+);\s+Senses\s+((?:[^;]+;\s+)?Perception\s+[^\n]+)(?:\n+)?(?:Weakness\s+([^\n]+)\n+)?(?:Aura\s+([^\n]+)\n+)?/,
+                gearMatch=/((?:GEAR)\n+(?:.*(?:\n+)?)+)/,
+                descriptionMatch = /LONG DESCRIPTION\n+((?:.+|\n+)+)/,
+                charList=[],
+                start = _.now();
+                
+            text =_.chain(text.replace(/<br\/>/g,'').replace(/<br>/g,'\n').replace(/\n+--------------------/g,'').split(/(?:\n+)?NEW CREATURE(?:\n+)?/))
+                .map((t)=>{
+                    return t.replace(/\ndefense\n/i,'___STATBLOCK PARSE SITE___ DEFENSE\n').replace(/\noffense\n/i,'___STATBLOCK PARSE SITE___ OFFENSE\n').replace(/\ntactics\n/i,'___STATBLOCK PARSE SITE___ TACTICS\n').replace(/\nstatistics\n/i,'___STATBLOCK PARSE SITE___ STATISTICS\n').replace(/\nspecial abilities\n/i,'___STATBLOCK PARSE SITE___ SPECIAL ABILITIES\n').replace(/\necology\n/i,'___STATBLOCK PARSE SITE___ ECOLOGY\n').replace(/\ngear\n/i,'___STATBLOCK PARSE SITE___ GEAR\n').replace(/\nlong description\n/i,'___STATBLOCK PARSE SITE___ LONG DESCRIPTION\n').split('___STATBLOCK PARSE SITE___ ');
+                })
+                .reject((t)=>{return(_.isUndefined(t) || _.isEmpty(t))})
+                .value();
+            sendChat('Pathfinder Companion Statblock Parser','/w "'+who+'" Statblock parsing and import of '+text.length+' statblock'+(text.length>1 ? 's':'')+' started. As creatures are successfully parsed, notifications will be sent to chat. Please do not send further API commands until parsing is complete. Newly imported sheets may be unresponsive for a while after import as the sheetworkers finish firing.',null,{noarchive:true});
+            if(characters){
+                if(characters.length<text.length){
+                    for(var l = characters.length;l<text.length;l++){
+                        characters.push(createObj('character',{name:'Character for statblock '+(l+ 1)}));
+                    }
+                }
+            }else{
+                characters = [];
+                for(var l = 0;l<text.length;l++){
                     characters.push(createObj('character',{name:'Character for statblock '+(l+ 1)}));
                 }
             }
-        }else{
-            characters = [];
-            for(var l = 0;l<text.length;l++){
-                characters.push(createObj('character',{name:'Character for statblock '+(l+ 1)}));
-            }
-        }
-        parser = async () =>{
-            try{
-            usesSpells=false;
-            accrue = {};
-            attributesToSet = {};
-            description = undefined;
-            charList.push(_.clone(characters[0]));
-            iChar = characters.shift();
-            attributes = findObjs({type:'attribute',characterid:iChar.id});
-            await createAttrWithWorker('is_npc',iChar.id,attributes,'1');
-            await createAttrWithWorker('config-show',iChar.id,attributes,'0');
-            statBlock = text.shift();
-            parseSection = () =>{
-                block = statBlock.shift().trim();
-                switch(true){
-                    case block.indexOf('DEFENSE')===0:
-                        block=block.match(defenseMatch);
-                        break;
-                    case block.indexOf('OFFENSE')===0:
-                        block=block.match(offenseMatch);
-                        break;
-                    case block.indexOf('TACTICS')===0:
-                        block=block.match(tacticsMatch);
-                        break;
-                    case block.indexOf('STATISTICS')===0:
-                        block=block.match(statisticsMatch);
-                        break;
-                    case block.indexOf('SPECIAL ABILITIES')===0:
-                        block=block.match(saMatch);
-                        break;
-                    case block.indexOf('ECOLOGY')===0:
-                        block=block.match(ecologyMatch);
-                        break;
-                    case block.indexOf('GEAR')===0:
-                        block=block.match(gearMatch);
-                        break;
-                    case block.indexOf('LONG DESCRIPTION')===0:
-                        block = block.match(descriptionMatch);
-                        break;
-                    default:
-                        block=block.match(defaultMatch);
-                        break;
-                }
-                if(block){
-                    section = block[0].match(/^(defense|offense|statistics|tactics|ecology|special abilities|gear|long description)\n/i);
-                    section = section ? section[1].toLowerCase() : 'default';
-                    for(var r=1;r<block.length;r++){
-                        if(block[r]){
-                            accrue[convert[section][r]]=_.clone(block[r]);
-                            log('  > Pathfinder Companion Statblock Parser:'+convert[section][r]+' parsed <');
-                        }
-                    }
-                    log('  > Pathfinder Companion Statblock Parser:'+section+' section parsed <');
-                }
-                if(!_.isEmpty(statBlock)){
-                    parseSection();
-                }
-            };
-            parseSection();
-            keys = _.keys(accrue);
-            keyWorker = async () =>{
+            parser = async () =>{
                 try{
-                var k = keys.shift(),
-                    gearType,beforeCombat,duringCombat,morale,environment,organization,treasure,charDescrip;
-                
-                switch(true){
-                    case (k==='gear'||k==='gear 1'||k==='gear 2'):
-                        var gearType = accrue[k].match(/^(GEAR\n+|Gear\s+|Other Gear\s+|Combat Gear\s+)/) ? accrue[k].match(/^(GEAR\n+|Gear\s+|Other Gear\s+|Combat Gear\s+)/)[0] : undefined;
-                        accrue[k]=accrue[k].replace(gearType,'');
-                        if(gearType.match(/^(GEAR|Gear|Other Gear)/)){
-                            await createAttrWithWorker('npc-other-gear',iChar.id,attributes,accrue[k]);
-                        }else{
-                            await createAttrWithWorker('npc-combat-gear',iChar.id,attributes,accrue[k]);
+                    usesSpells=false;
+                    accrue = {};
+                    attributesToSet = {};
+                    description = undefined;
+                    charList.push(_.clone(characters[0]));
+                    iChar = characters.shift();
+                    attributes = findObjs({type:'attribute',characterid:iChar.id});
+                    await createAttrWithWorker('is_npc',iChar.id,attributes,'1');
+                    await createAttrWithWorker('config-show',iChar.id,attributes,'0');
+                    statBlock = text.shift();
+                    parseSection = () =>{
+                        block = statBlock.shift().trim();
+                        switch(true){
+                            case block.indexOf('DEFENSE')===0:
+                                block=block.match(defenseMatch);
+                                break;
+                            case block.indexOf('OFFENSE')===0:
+                                block=block.match(offenseMatch);
+                                break;
+                            case block.indexOf('TACTICS')===0:
+                                block=block.match(tacticsMatch);
+                                break;
+                            case block.indexOf('STATISTICS')===0:
+                                block=block.match(statisticsMatch);
+                                break;
+                            case block.indexOf('SPECIAL ABILITIES')===0:
+                                block=block.match(saMatch);
+                                break;
+                            case block.indexOf('ECOLOGY')===0:
+                                block=block.match(ecologyMatch);
+                                break;
+                            case block.indexOf('GEAR')===0:
+                                block=block.match(gearMatch);
+                                break;
+                            case block.indexOf('LONG DESCRIPTION')===0:
+                                block = block.match(descriptionMatch);
+                                break;
+                            default:
+                                block=block.match(defaultMatch);
+                                break;
                         }
-                        break;
-                    case k==='ecology':
-                        //description = (description ? description+'<br><br>' : '')+accrue[k];
-                        accrue[k] = accrue[k].match(/ECOLOGY\n+(?:Environment\s+([^\n]+)(?:\n+)?)?(?:Organization\s+([^\n]+)(?:\n+)?)?(?:Treasure\s+([^\n]+)(?:\n+)?)?((?:.*|\n+)+)?/);
-                        if(accrue[k]){
-                            attributesToSet['environment']=accrue[k][1];
-                            attributesToSet['organization']=accrue[k][2];
-                            attributesToSet['other_items_treasure']=accrue[k][3];
-                        }
-                        break;
-                    case k==='avatar':
-                        iChar.set('avatar',cleanImgSrc(accrue[k]));
-                        break;
-                    case k==='token':
-                        tokenImage = accrue[k];
-                        break;
-                    case k==='description':
-                        attributesToSet['character_description'] = accrue[k]+(attributesToSet['character_description'] ? '<br>'+attributesToSet['character_description'] : '');
-                        break;
-                    case k==='character_name':
-                        iChar.set('name',accrue[k].trim());
-                        break;
-                    case k==='class':
-                        attributesToSet['init_compendium']=accrue[k]+(attributesToSet['init_compendium'] ? ' '+attributesToSet['init_compendium'] : '');
-                        break;
-                    case k==='subtype':
-                        attributesToSet['type_compendium']=(attributesToSet['type_compendium'] ? attributesToSet['type_compendium']+'/' : '')+accrue[k];
-                        break;
-                    case k==='type_compendium':
-                        attributesToSet[k]=accrue[k]+(attributesToSet[k] ? '/'+attributesToSet[k] : '');
-                        break;
-                    case k==='init_compendium':
-                        attributesToSet[k]=(attributesToSet[k] ? attributesToSet[k]+' ' : '')+accrue[k];
-                        break;
-                    case k==='tactics':
-                        accrue[k]=accrue[k].match(/TACTICS\n+(?:Before Combat\s+([^\n]+)(?:\n+)?)?(?:During Combat\s+([^\n]+)(?:\n+)?)?(?:Morale\s+([^\n]+)(?:\n+)?)?/);
-                        if(accrue[k]){
-                            attributesToSet['npc-before-combat']=accrue[k][1];
-                            attributesToSet['npc-during-combat']=accrue[k][2];
-                            attributesToSet['npc-morale']=accrue[k][3];
-                        }
-                        break;
-                    case k==='add to description':
-                        attributesToSet['character_description']=(attributesToSet['character_description'] ? attributesToSet['character_description']+'<br>' : '') + accrue[k];
-                        break;
-                    case k==='spells':
-                        var spellSect = accrue[k].match(/((?:[^\n]+(?=Psychic Magic|Spell-like Abilities|Spells Known|Spells Prepared))?(?:Psychic Magic|Spell-like Abilities|Spells Known|Spells Prepared))/gi);
-                        _.each(spellSect,(s)=>{
-                            accrue[k]=accrue[k].replace(s,'___Spell Parse Site___'+s);
-                        });
-                        accrue[k]=accrue[k].split('___Spell Parse Site___');
-                        accrue[k]=_.reject(accrue[k],(a)=>{return _.isEmpty(a)});
-                        _.each(accrue[k],(a)=>{
-                            if(a.match(/(?:Spell-Like Abilities|Psychic Magic)\s/)){
-                                attributesToSet['npc-spellike-ability-text'] = attributesToSet['npc-spellike-ability-text'] ? attributesToSet['npc-spellike-ability-text']+a : a.replace(/^\n/,'');
-                            }else{
-                                if(a.match(/((?:\n)?.*?(?=\(CL[^\n]+)\(CL[^\n]+)\n+/i)){
-                                    usesSpells=true
-                                    spellsToCreate.push(a.replace(/^\n/,''));
+                        if(block){
+                            section = block[0].match(/^(defense|offense|statistics|tactics|ecology|special abilities|gear|long description)\n/i);
+                            section = section ? section[1].toLowerCase() : 'default';
+                            for(var r=1;r<block.length;r++){
+                                if(block[r]){
+                                    accrue[convert[section][r]]=_.clone(block[r]);
+                                    log('  > Pathfinder Companion Statblock Parser:'+convert[section][r]+' parsed <');
                                 }
                             }
-                        });
-                        break;
-                    case k==='cr_compendium':
-                        if(accrue[k].match(/\/MR\s+\d+/)){
-                            var ratings = accrue[k].match(/([^\s]+)\/MR\s+(.+)/);
-                            if(ratings){
-                                attributesToSet['cr_compendium'] = ratings[1];
-                                attributesToSet['npc-mythic-mr'] = ratings[2];
-                                await createAttrWithWorker('mythic-adventures-show',iChar.id,attributes,'1');
-                            }
-                        }else{
-                            attributesToSet['cr_compendium'] = accrue[k];
+                            log('  > Pathfinder Companion Statblock Parser:'+section+' section parsed <');
                         }
-                        break;
-                    case k==='long description':
-                        attributesToSet['character_description'] = (attributesToSet['character_description'] ? attributesToSet['character_description']+'<br>' : '')+accrue[k];
-                        break;
-                    default:
-                        attributesToSet[k] = accrue[k];
-                        break;
-                }
-                if(keys.length>0){
-                    return new Promise((resolve,reject)=>{
-                        _.defer(()=>{
-                            resolve(keyWorker());
-                        });
-                    });
-                }else{
-                    return 'all keys resolved';
-                }
-                }catch(err){
-                    sendError(err);
-                }
-            };
-            await keyWorker();
-            description = ((attributesToSet['character_description'] ? attributesToSet['character_description'] : '')+((attributesToSet['npc-before-combat']||attributesToSet['npc-during-combat']||attributesToSet['npc-morale']) ? '<br><h4>TACTICS</h4>'+(attributesToSet['npc-before-combat'] ? '<b>Before Combat </b>'+attributesToSet['npc-before-combat']+'<br>' : '')+(attributesToSet['npc-during-combat'] ? '<b>During Combat </b>'+attributesToSet['npc-during-combat']+'<br>' : '')+(attributesToSet['npc-morale'] ? '<b>Morale </b>'+attributesToSet['npc-morale']+'<br>' : '') : '')+((attributesToSet['environment']||attributesToSet['organization']||attributesToSet['other_items_treasure']) ? '<br><h4>ECOLOGY</h4>'+(attributesToSet['environment'] ? '<b>Environment </b>'+attributesToSet['environment']+'<br>' : '')+(attributesToSet['organization'] ? '<b>Organization </b>'+attributesToSet['organization']+'<br>' : '')+(attributesToSet['other_items_treasure'] ? '<b>Treasure </b>'+attributesToSet['other_items_treasure']+'<br>' : '') : '')).trim();
-            
-            description.length>0 ? iChar.set('gmnotes',(description ? description.replace(/\n/g,'<br>') : '')) : undefined;
-            keys = _.keys(attributesToSet);
-            
-            attrWorker = () =>{
-                let k = keys.shift();
-                setAttr = _.find(attributes,(a)=>{return a.get('name')===k});
-                setAttr ? setAttr.set('current',attributesToSet[k]) : attributes.push(createObj('attribute',{characterid:iChar.id,name:k,current:attributesToSet[k]}));
-                if(!_.isEmpty(keys)){
-                    attrWorker();
-                }
-            };
-            attrWorker();
-            await new Promise((resolve,reject)=>{
-                _.defer((name,id,attr)=>{
-                    resolve(createAttrWithWorker(name,id,attr,'1'));
-                },'npc_import_now',iChar.id,attributes);
-            });
-            if(tokenImage){
-                let sizeOp = {
-                    'Fine':35,
-                    'Diminutive':35,
-                    'Tiny':35,
-                    'Small':35,
-                    'Medium':70,
-                    'Large':140,
-                    'Huge':210,
-                    'Gargantuan':280,
-                    'Colossal':350
-                };
-                page = findObjs({type:'page'})[0];
-                token = createObj('graphic',{
-                    pageid:page.id,
-                    imgsrc:cleanImgSrc(tokenImage),
-                    name:iChar.get('name'),
-                    represensts:iChar.id,
-                    top:0,
-                    left:0,
-                    width:sizeOp[accrue['size_compendium']],
-                    height:sizeOp[accrue['size_compendium']],
-                    bar1_value:(state.PFCompanion.defaultToken.bar1Link ? getAttrByName(iChar.id,state.PFCompanion.defaultToken.bar1Link) : ''),
-                    bar1_max:(state.PFCompanion.defaultToken.bar1Link ? getAttrByName(iChar.id,state.PFCompanion.defaultToken.bar1Link,'max') : ''),
-                    bar2_value:(state.PFCompanion.defaultToken.bar2Link ? getAttrByName(iChar.id,state.PFCompanion.defaultToken.bar2Link) : ''),
-                    bar2_max:(state.PFCompanion.defaultToken.bar2Link ? getAttrByName(iChar.id,state.PFCompanion.defaultToken.bar2Link,'max') : ''),
-                    bar3_value:(state.PFCompanion.defaultToken.bar3Link ? getAttrByName(iChar.id,state.PFCompanion.defaultToken.bar3Link) : ''),
-                    bar3_max:(state.PFCompanion.defaultToken.bar3Link ? getAttrByName(iChar.id,state.PFCompanion.defaultToken.bar3Link,'max') : ''),
-                    layer:'walls'
-                });
-                setDefaultTokenForCharacter(iChar,token);
-                token.remove();
-            }
-            if(!_.isEmpty(attributesToSet['character_description'])){
-                setAttr = _.find(attributes,(a)=>{return a.get('name')==='character_description'});
-                setAttr ? setAttr.set('current',attributesToSet['character_description']) : attributes.push(createObj('attribute',{characterid:iChar.id,name:'character_description',current:attributesToSet['character_description']}));
-            }
-            //need to rewrite as parallel loops
-            if(usesSpells){
-                await new Promise(async (resolve,reject)=>{
-                    try{
-                        let spellStart = _.now();
-                        let spellSetsWorked = [];
-                        let spellSetWorker = async (spellSet)=>{
-                            try{
-                                let spellClass = spellSet.match(/(.*(?= (?:spells known|spells prepared)))/i) ? spellSet.match(/(.*(?= (?:spells known|spells prepared)))/i)[1] : (spellSet.match(/spells prepared/i) ? 'Cleric' : 'Sorceror');
-                                let prepared = spellSet.match(/spells prepared/i) ? true : false;
-                                let CL = spellSet.match(/\([^\)]*CL\s*(\d+)\)?/i) ? spellSet.match(/\([^\)]*CL\s*(\d+)\)?/i)[1] : undefined;
-                                let concentration = spellSet.match(/\([^\)]*concentration\s*((?:\+|\-)?\d+)\)?/) ? spellSet.match(/\([^\)]*concentration\s*((?:\+|\-)?\d+)\)?/)[1] : undefined;
-                                if(!CL){
-                                    return 'invalid spellclass';
+                        if(!_.isEmpty(statBlock)){
+                            parseSection();
+                        }
+                    };
+                    parseSection();
+                    keys = _.keys(accrue);
+                    keyWorker = async () =>{
+                        try{
+                        var k = keys.shift(),
+                            gearType,beforeCombat,duringCombat,morale,environment,organization,treasure,charDescrip;
+                        
+                        switch(true){
+                            case (k==='gear'||k==='gear 1'||k==='gear 2'):
+                                var gearType = accrue[k].match(/^(GEAR\n+|Gear\s+|Other Gear\s+|Combat Gear\s+)/) ? accrue[k].match(/^(GEAR\n+|Gear\s+|Other Gear\s+|Combat Gear\s+)/)[0] : undefined;
+                                accrue[k]=accrue[k].replace(gearType,'');
+                                if(gearType.match(/^(GEAR|Gear|Other Gear)/)){
+                                    await createAttrWithWorker('npc-other-gear',iChar.id,attributes,accrue[k]);
+                                }else{
+                                    await createAttrWithWorker('npc-combat-gear',iChar.id,attributes,accrue[k]);
                                 }
-                                //create spellClass, CL, spont/prepared, Concentration
-                                let classNum = await setupSpellClass(iChar,spellClass,CL,prepared,concentration);
-                                if(!classNum){
-                                    return Promise.resolve('no Class');
+                                break;
+                            case k==='ecology':
+                                //description = (description ? description+'<br><br>' : '')+accrue[k];
+                                accrue[k] = accrue[k].match(/ECOLOGY\n+(?:Environment\s+([^\n]+)(?:\n+)?)?(?:Organization\s+([^\n]+)(?:\n+)?)?(?:Treasure\s+([^\n]+)(?:\n+)?)?((?:.*|\n+)+)?/);
+                                if(accrue[k]){
+                                    attributesToSet['environment']=accrue[k][1];
+                                    attributesToSet['organization']=accrue[k][2];
+                                    attributesToSet['other_items_treasure']=accrue[k][3];
                                 }
-                                let spellLevels = spellSet.replace(/.*(?=\s*(?:spells known|spells prepared)\s*)[^\n]+\n+/i,'').split(/\n+/);
-                                let levelArray = [];
-                                let levelWorker = async (sl)=>{
-                                    try{
-                                        let level=sl.match(/^\d\w{0,2}\s*(?:\([^\)]+\))?(?:\-|—)/) ? sl.match(/^\d\w{0,2}\s*(?:\([^\)]+\))?(?:\-|—)/)[0] : undefined;
-                                        if(level){
-                                            sl = sl.replace(level,'');
-                                            let commaMatch = sl.match(/,/g);
-                                            let commaIndex=0;
-                                            let spells = [];
-                                            let workedSpells=[];
-                                            _.each(commaMatch,(cm)=>{
-                                                let commaCheck = commaIndex===0 ? sl.match(/^[^,]*\([^\)]+,[^\(]+\)/) : sl.match(/^[^,]*\([^\)]+,[^\(]+,[^\(]+\)/);
-                                                if(!commaCheck){
-                                                    let newSpell = sl.slice(0,sl.indexOf(',',commaIndex+ 1));
-                                                    sl=sl.replace(newSpell+',','').trim();
-                                                    spells.push(newSpell.trim());
-                                                    commaIndex = 0;
-                                                }else{
-                                                    commaIndex=sl.indexOf(',',commaIndex+ 1);
-                                                }
-                                            });
-                                            spells.push(sl.trim());
-                                            sl = level.match(/^(\d)(?:st|nd|th|rd)?/);
-                                            sl = sl ? sl[1] : undefined;
-                                            if(!sl){
-                                                return 'Invalid spell level';
-                                            }
-                                            let spellWorker = async () =>{
-                                                let s = spells.shift();
-                                                await new Promise((resolve,reject)=>{
-                                                    _.defer((c,n,sp,lev,spst,p)=>{
-                                                        resolve(createSpell(c,n,sp,lev,spst,p));
-                                                    },iChar,classNum,s,sl,spellStart,prepared);
-                                                });
-                                                if(!_.isEmpty(spells)){
-                                                    return spellWorker();
-                                                }else{
-                                                    return 'spells worked';
-                                                }
-                                            };
-                                            if(!_.isEmpty(spells)){
-                                                return await spellWorker();
-                                            }else{
-                                                return 'no spells';
-                                            }
-                                        }else{
-                                            return Promise.resolve('Invalid Line');
+                                break;
+                            case k==='avatar':
+                                iChar.set('avatar',cleanImgSrc(accrue[k]));
+                                break;
+                            case k==='token':
+                                tokenImage = accrue[k];
+                                break;
+                            case k==='description':
+                                attributesToSet['character_description'] = accrue[k]+(attributesToSet['character_description'] ? '<br>'+attributesToSet['character_description'] : '');
+                                break;
+                            case k==='character_name':
+                                iChar.set('name',accrue[k].trim());
+                                break;
+                            case k==='class':
+                                attributesToSet['init_compendium']=accrue[k]+(attributesToSet['init_compendium'] ? ' '+attributesToSet['init_compendium'] : '');
+                                break;
+                            case k==='subtype':
+                                attributesToSet['type_compendium']=(attributesToSet['type_compendium'] ? attributesToSet['type_compendium']+'/' : '')+accrue[k];
+                                break;
+                            case k==='type_compendium':
+                                attributesToSet[k]=accrue[k]+(attributesToSet[k] ? '/'+attributesToSet[k] : '');
+                                break;
+                            case k==='init_compendium':
+                                attributesToSet[k]=(attributesToSet[k] ? attributesToSet[k]+' ' : '')+accrue[k];
+                                break;
+                            case k==='tactics':
+                                accrue[k]=accrue[k].match(/TACTICS\n+(?:Before Combat\s+([^\n]+)(?:\n+)?)?(?:During Combat\s+([^\n]+)(?:\n+)?)?(?:Morale\s+([^\n]+)(?:\n+)?)?/);
+                                if(accrue[k]){
+                                    attributesToSet['npc-before-combat']=accrue[k][1];
+                                    attributesToSet['npc-during-combat']=accrue[k][2];
+                                    attributesToSet['npc-morale']=accrue[k][3];
+                                }
+                                break;
+                            case k==='add to description':
+                                attributesToSet['character_description']=(attributesToSet['character_description'] ? attributesToSet['character_description']+'<br>' : '') + accrue[k];
+                                break;
+                            case k==='spells':
+                                var spellSect = accrue[k].match(/((?:[^\n]+(?=Psychic Magic|Spell-like Abilities|Spells Known|Spells Prepared))?(?:Psychic Magic|Spell-like Abilities|Spells Known|Spells Prepared))/gi);
+                                _.each(spellSect,(s)=>{
+                                    accrue[k]=accrue[k].replace(s,'___Spell Parse Site___'+s);
+                                });
+                                accrue[k]=accrue[k].split('___Spell Parse Site___');
+                                accrue[k]=_.reject(accrue[k],(a)=>{return _.isEmpty(a)});
+                                _.each(accrue[k],(a)=>{
+                                    if(a.match(/(?:Spell-Like Abilities|Psychic Magic)\s/)){
+                                        attributesToSet['npc-spellike-ability-text'] = attributesToSet['npc-spellike-ability-text'] ? attributesToSet['npc-spellike-ability-text']+a : a.replace(/^\n/,'');
+                                    }else{
+                                        if(a.match(/((?:\n)?.*?(?=\(CL[^\n]+)\(CL[^\n]+)\n+/i)){
+                                            usesSpells=true
+                                            spellsToCreate.push(a.replace(/^\n/,''));
                                         }
+                                    }
+                                });
+                                break;
+                            case k==='cr_compendium':
+                                if(accrue[k].match(/\/MR\s+\d+/)){
+                                    var ratings = accrue[k].match(/([^\s]+)\/MR\s+(.+)/);
+                                    if(ratings){
+                                        attributesToSet['cr_compendium'] = ratings[1];
+                                        attributesToSet['npc-mythic-mr'] = ratings[2];
+                                        await createAttrWithWorker('mythic-adventures-show',iChar.id,attributes,'1');
+                                    }
+                                }else{
+                                    attributesToSet['cr_compendium'] = accrue[k];
+                                }
+                                break;
+                            case k==='long description':
+                                attributesToSet['character_description'] = (attributesToSet['character_description'] ? attributesToSet['character_description']+'<br>' : '')+accrue[k];
+                                break;
+                            default:
+                                attributesToSet[k] = accrue[k];
+                                break;
+                        }
+                        if(keys.length>0){
+                            return new Promise((resolve,reject)=>{
+                                _.defer(()=>{
+                                    resolve(keyWorker());
+                                });
+                            });
+                        }else{
+                            return 'all keys resolved';
+                        }
+                        }catch(err){
+                            sendError(err);
+                        }
+                    };
+                    await keyWorker();
+                    description = ((attributesToSet['character_description'] ? attributesToSet['character_description'] : '')+((attributesToSet['npc-before-combat']||attributesToSet['npc-during-combat']||attributesToSet['npc-morale']) ? '<br><h4>TACTICS</h4>'+(attributesToSet['npc-before-combat'] ? '<b>Before Combat </b>'+attributesToSet['npc-before-combat']+'<br>' : '')+(attributesToSet['npc-during-combat'] ? '<b>During Combat </b>'+attributesToSet['npc-during-combat']+'<br>' : '')+(attributesToSet['npc-morale'] ? '<b>Morale </b>'+attributesToSet['npc-morale']+'<br>' : '') : '')+((attributesToSet['environment']||attributesToSet['organization']||attributesToSet['other_items_treasure']) ? '<br><h4>ECOLOGY</h4>'+(attributesToSet['environment'] ? '<b>Environment </b>'+attributesToSet['environment']+'<br>' : '')+(attributesToSet['organization'] ? '<b>Organization </b>'+attributesToSet['organization']+'<br>' : '')+(attributesToSet['other_items_treasure'] ? '<b>Treasure </b>'+attributesToSet['other_items_treasure']+'<br>' : '') : '')).trim();
+                    
+                    description.length>0 ? iChar.set('gmnotes',(description ? description.replace(/\n/g,'<br>') : '')) : undefined;
+                    keys = _.keys(attributesToSet);
+                    
+                    attrWorker = () =>{
+                        let k = keys.shift();
+                        setAttr = _.find(attributes,(a)=>{return a.get('name')===k});
+                        setAttr ? setAttr.set('current',attributesToSet[k]) : attributes.push(createObj('attribute',{characterid:iChar.id,name:k,current:attributesToSet[k] || ''}));
+                        if(!_.isEmpty(keys)){
+                            attrWorker();
+                        }
+                    };
+                    attrWorker();
+                    await new Promise((resolve,reject)=>{
+                        _.defer((name,id,attr)=>{
+                            resolve(createAttrWithWorker(name,id,attr,'1'));
+                        },'npc_import_now',iChar.id,attributes);
+                    });
+                    if(tokenImage){
+                        let sizeOp = {
+                            'Fine':35,
+                            'Diminutive':35,
+                            'Tiny':35,
+                            'Small':35,
+                            'Medium':70,
+                            'Large':140,
+                            'Huge':210,
+                            'Gargantuan':280,
+                            'Colossal':350
+                        };
+                        page = findObjs({type:'page'})[0];
+                        token = createObj('graphic',{
+                            pageid:page.id,
+                            imgsrc:cleanImgSrc(tokenImage),
+                            name:iChar.get('name'),
+                            represensts:iChar.id,
+                            top:0,
+                            left:0,
+                            width:sizeOp[accrue['size_compendium']],
+                            height:sizeOp[accrue['size_compendium']],
+                            bar1_value:(state.PFCompanion.defaultToken.bar1Link ? getAttrByName(iChar.id,state.PFCompanion.defaultToken.bar1Link) : ''),
+                            bar1_max:(state.PFCompanion.defaultToken.bar1Link ? getAttrByName(iChar.id,state.PFCompanion.defaultToken.bar1Link,'max') : ''),
+                            bar2_value:(state.PFCompanion.defaultToken.bar2Link ? getAttrByName(iChar.id,state.PFCompanion.defaultToken.bar2Link) : ''),
+                            bar2_max:(state.PFCompanion.defaultToken.bar2Link ? getAttrByName(iChar.id,state.PFCompanion.defaultToken.bar2Link,'max') : ''),
+                            bar3_value:(state.PFCompanion.defaultToken.bar3Link ? getAttrByName(iChar.id,state.PFCompanion.defaultToken.bar3Link) : ''),
+                            bar3_max:(state.PFCompanion.defaultToken.bar3Link ? getAttrByName(iChar.id,state.PFCompanion.defaultToken.bar3Link,'max') : ''),
+                            layer:'walls'
+                        });
+                        setDefaultTokenForCharacter(iChar,token);
+                        token.remove();
+                    }
+                    if(!_.isEmpty(attributesToSet['character_description'])){
+                        setAttr = _.find(attributes,(a)=>{return a.get('name')==='character_description'});
+                        setAttr ? setAttr.set('current',attributesToSet['character_description']) : attributes.push(createObj('attribute',{characterid:iChar.id,name:'character_description',current:attributesToSet['character_description']}));
+                    }
+                    //need to rewrite as parallel loops
+                    if(usesSpells){
+                        await new Promise(async (resolve,reject)=>{
+                            try{
+                                let spellStart = _.now();
+                                let spellSetsWorked = [];
+                                let spellSetWorker = async (spellSet)=>{
+                                    try{
+                                        let spellClass = spellSet.match(/(.*(?= (?:spells known|spells prepared)))/i) ? spellSet.match(/(.*(?= (?:spells known|spells prepared)))/i)[1] : (spellSet.match(/spells prepared/i) ? 'Cleric' : 'Sorceror');
+                                        let prepared = spellSet.match(/spells prepared/i) ? true : false;
+                                        let CL = spellSet.match(/\([^\)]*CL\s*(\d+)\)?/i) ? spellSet.match(/\([^\)]*CL\s*(\d+)\)?/i)[1] : undefined;
+                                        let concentration = spellSet.match(/\([^\)]*concentration\s*((?:\+|\-)?\d+)\)?/) ? spellSet.match(/\([^\)]*concentration\s*((?:\+|\-)?\d+)\)?/)[1] : undefined;
+                                        if(!CL){
+                                            return 'invalid spellclass';
+                                        }
+                                        //create spellClass, CL, spont/prepared, Concentration
+                                        let classNum = await setupSpellClass(iChar,spellClass,CL,prepared,concentration);
+                                        if(!classNum){
+                                            return Promise.resolve('no Class');
+                                        }
+                                        let spellLevels = spellSet.replace(/.*(?=\s*(?:spells known|spells prepared)\s*)[^\n]+\n+/i,'').split(/\n+/);
+                                        let levelArray = [];
+                                        let levelWorker = async (sl)=>{
+                                            try{
+                                                let level=sl.match(/^\d\w{0,2}\s*(?:\([^\)]+\))?(?:\-|—)/) ? sl.match(/^\d\w{0,2}\s*(?:\([^\)]+\))?(?:\-|—)/)[0] : undefined;
+                                                if(level){
+                                                    sl = sl.replace(level,'');
+                                                    let commaMatch = sl.match(/,/g);
+                                                    let commaIndex=0;
+                                                    let spells = [];
+                                                    let workedSpells=[];
+                                                    _.each(commaMatch,(cm)=>{
+                                                        let commaCheck = commaIndex===0 ? sl.match(/^[^,]*\([^\)]+,[^\(]+\)/) : sl.match(/^[^,]*\([^\)]+,[^\(]+,[^\(]+\)/);
+                                                        if(!commaCheck){
+                                                            let newSpell = sl.slice(0,sl.indexOf(',',commaIndex+ 1));
+                                                            sl=sl.replace(newSpell+',','').trim();
+                                                            spells.push(newSpell.trim());
+                                                            commaIndex = 0;
+                                                        }else{
+                                                            commaIndex=sl.indexOf(',',commaIndex+ 1);
+                                                        }
+                                                    });
+                                                    spells.push(sl.trim());
+                                                    sl = level.match(/^(\d)(?:st|nd|th|rd)?/);
+                                                    sl = sl ? sl[1] : undefined;
+                                                    if(!sl){
+                                                        return 'Invalid spell level';
+                                                    }
+                                                    let spellWorker = async () =>{
+                                                        let s = spells.shift();
+                                                        await new Promise((resolve,reject)=>{
+                                                            _.defer((c,n,sp,lev,spst,p)=>{
+                                                                resolve(createSpell(c,n,sp,lev,spst,p));
+                                                            },iChar,classNum,s,sl,spellStart,prepared);
+                                                        });
+                                                        if(!_.isEmpty(spells)){
+                                                            return spellWorker();
+                                                        }else{
+                                                            return 'spells worked';
+                                                        }
+                                                    };
+                                                    if(!_.isEmpty(spells)){
+                                                        return await spellWorker();
+                                                    }else{
+                                                        return 'no spells';
+                                                    }
+                                                }else{
+                                                    return Promise.resolve('Invalid Line');
+                                                }
+                                            }catch(err){
+                                                sendError(err);
+                                            }
+                                        };
+                                        _.each(spellLevels,(sL)=>{
+                                            levelArray.push(levelWorker(sL.trim()));
+                                        });
+                                        return Promise.all(levelArray);
                                     }catch(err){
                                         sendError(err);
                                     }
                                 };
-                                _.each(spellLevels,(sL)=>{
-                                    levelArray.push(levelWorker(sL.trim()));
+                                _.each(spellsToCreate,(stc)=>{
+                                    spellSetsWorked.push(spellSetWorker(stc));
                                 });
-                                return Promise.all(levelArray);
+                                resolve(Promise.all(spellSetsWorked));
                             }catch(err){
                                 sendError(err);
                             }
-                        };
-                        _.each(spellsToCreate,(stc)=>{
-                            spellSetsWorked.push(spellSetWorker(stc));
                         });
-                        resolve(Promise.all(spellSetsWorked));
-                    }catch(err){
-                        sendError(err);
+                        await new Promise((resolve,reject)=>{
+                            _.defer((c,a)=>{
+                                resolve(createAttrWithWorker('use_spells',c,a,'1'));
+                            },iChar.id,attributes);
+                        });
                     }
-                });
-                await new Promise((resolve,reject)=>{
-                    _.defer((c,a)=>{
-                        resolve(createAttrWithWorker('use_spells',c,a,'1'));
-                    },iChar.id,attributes);
-                });
-            }
-            await new Promise((resolve,reject)=>{
-                _.defer((iC,w)=>{
-                    log('  > Pathfinder Companion Statblock Parser:'+iC.get('name')+' imported <');
-                    sendChat('Pathfinder Companion Statblock Parser','/w "'+w+'" <u><b>['+iC.get('name')+'](https://journal.roll20.net/character/'+iC.id+')</b></u> imported',null,{noarchive:true});
-                    resolve('notification sent');
-                },iChar,who);
-            });
-            if(!_.isEmpty(text)){
-                _.defer(parser);
-            }else{
-                charListLength=charList.length;
-                if(state.PFCompanion.TAS==='auto' || state.PFCompanion.ResourceTrack==='on'){
-                    var charToInit;
-                    var charInit = async () => {
-                        charToInit = charList.shift();
-                        await initializeCharacter(charToInit);
-                        log('  > Pathfinder Companion Statblock Parser:'+charToInit.get('name')+' initialized <');
-                        if(!_.isEmpty(charList)){
-                            return new Promise((resolve,reject)=>{
-                                _.defer(()=>{resolve(charInit())});
-                            });
-                        }else{
-                            log('  > Pathfinder Companion Statblock Parser: All NPCs initialized. Total import time:'+((_.now()-start)/1000)+' seconds <');
-                            return 'All Characters Initialized';
+                    await new Promise((resolve,reject)=>{
+                        _.defer((iC,w)=>{
+                            log('  > Pathfinder Companion Statblock Parser:'+iC.get('name')+' imported <');
+                            sendChat('Pathfinder Companion Statblock Parser','/w "'+w+'" <u><b>['+iC.get('name')+'](https://journal.roll20.net/character/'+iC.id+')</b></u> imported',null,{noarchive:true});
+                            resolve('notification sent');
+                        },iChar,who);
+                    });
+                    if(!_.isEmpty(text)){
+                        _.defer(parser);
+                    }else{
+                        charListLength=charList.length;
+                        if(state.PFCompanion.TAS==='auto' || state.PFCompanion.ResourceTrack==='on'){
+                            var charToInit;
+                            var charInit = async () => {
+                                charToInit = charList.shift();
+                                await initializeCharacter(charToInit);
+                                log('  > Pathfinder Companion Statblock Parser:'+charToInit.get('name')+' initialized <');
+                                if(!_.isEmpty(charList)){
+                                    return new Promise((resolve,reject)=>{
+                                        _.defer(()=>{resolve(charInit())});
+                                    });
+                                }else{
+                                    log('  > Pathfinder Companion Statblock Parser: All NPCs initialized. Total import time:'+((_.now()-start)/1000)+' seconds <');
+                                    return 'All Characters Initialized';
+                                }
+                            };
+                            await charInit();
                         }
-                    };
-                    await charInit();
+                        await new Promise((resolve,reject)=>{
+                            _.defer((cL,w,s)=>{
+                                log('  > Pathfinder Companion Statblock Parser: '+cL+' character'+(cL>1 ? 's':'')+' parsed and imported in '+((_.now()-s)/1000)+' seconds');
+                                sendChat('Pathfinder Companion Statblock Parser','/w "'+w+'" '+cL+' character'+(cL ? 's':'')+'  parsed and imported in '+((_.now()-s)/1000)+' seconds',null,{noarchive:true});
+                                resolve('Import Finished');
+                            },charListLength,who,start);
+                        });
+                    }
+                }catch(err){
+                    sendError(err);
                 }
-                await new Promise((resolve,reject)=>{
-                    _.defer((cL,w,s)=>{
-                        log('  > Pathfinder Companion Statblock Parser: '+cL+' character'+(cL>1 ? 's':'')+' parsed and imported in '+((_.now()-s)/1000)+' seconds');
-                        sendChat('Pathfinder Companion Statblock Parser','/w "'+w+'" '+cL+' character'+(cL ? 's':'')+'  parsed and imported in '+((_.now()-s)/1000)+' seconds',null,{noarchive:true});
-                        resolve('Import Finished');
-                    },charListLength,who,start);
-                });
-            }
-            }catch(err){
-                sendError(err);
-            }
-        };//end of parser()
-        parser();
+            };//end of parser()
+            parser();
         }catch(err){
             sendError(err);
         }
@@ -2400,7 +2400,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                 targetingButton = '';
             }
         }
-        applicationButton=makeButton(HE('!pfc --affect,rid='+rowID+',schoolMatch='+schoolMatch+(damage? ',damage='+damage+'>'+(damageType||'') : '')+(saveMatch ? ',save=dc'+dcMatch+' '+saveMatch: '')+(subTargets.area ? '?{Make sure you have the AOE path selected,Hit Cancel if you do not|}' : '|@{target||token_id}')),'<span style="font-family:pictos;">e</span>','black','transparent','Apply Effects');
+        applicationButton=makeButton(HE('!pfc --affect,rid='+rowID+',schoolMatch='+schoolMatch+(damage? ',damage='+damage+'>'+(damageType||'') : '')+(saveMatch ? 'rollSave,save=dc'+dcMatch+' '+saveMatch: '')+(subTargets.area ? '?{Make sure you have the AOE path selected,Hit Cancel if you do not|}' : '|@{target||token_id}')),'<span style="font-family:pictos;">e</span>','black','transparent','Apply Effects');
         dialog+='{{subtitle='+targetingButton+'}}'+'{{Apply Effects='+applicationButton+'}}';
         sendChat('Pathfinder Companion','/w "'+who+'" '+dialog);
     },
@@ -2699,7 +2699,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
     
     mapLine = async function(obj,target,length,polyID,strokeColor,pageID){
         try{
-        var originPath,destPath,square,lineStart,pathLength,angleLimit,newSquare,width,height,finalLine,trueWidth,trueHeight,xMod,yMod,
+        var originPath,destPath,square,lineStart,pathLength,angleLimit,newSquare,width,height,finalLine,trueWidth,trueHeight,xMod,yMod,wMod,yMod,
             lines=[],
             accumulator=[],
             dist = target ? pDist(obj,target) : undefined,
@@ -2868,75 +2868,115 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                 let mod2 = 0;
                 switch(true){
                     case rotation<45:
+                        trueWidth = height;
+                        trueHeight = width;
                         _.each(paths[p],(pa)=>{
                             finalLine.push([pa[0],pa[2],-pa[1]]);
                         });
-                        trueWidth = height;
-                        trueHeight = width;
+                        wMod= _.min(finalLine,(fl)=>{return fl[1]})[1]*-1;
+                        hMod= _.min(finalLine,(fl)=>{return fl[2]})[2]*-1;
+                        _.each(_.range(finalLine.length),(r)=>{
+                            finalLine[r]=[finalLine[r][0],finalLine[r][1]+wMod,finalLine[r][2]+hMod];
+                        });
                         xMod=1;
                         yMod=-1;
                         break;
                     case rotation<90:
-                        _.each(paths[p],(pa)=>{
-                            finalLine.push([pa[0],pa[1],-pa[2]]);
-                        });
                         trueWidth = width;
                         trueHeight = height;
                         xMod=1;            
                         yMod=-1;
+                        _.each(paths[p],(pa)=>{
+                            finalLine.push([pa[0],pa[1],-pa[2]+trueHeight]);
+                        });
+                        wMod= _.min(finalLine,(fl)=>{return fl[1]})[1]*-1;
+                        hMod= _.min(finalLine,(fl)=>{return fl[2]})[2]*-1;
+                        _.each(_.range(finalLine.length),(r)=>{
+                            finalLine[r]=[finalLine[r][0],finalLine[r][1]+wMod,finalLine[r][2]+hMod];
+                        });
                         break;
                     case rotation<135:
                         finalLine = paths[p];
+                        wMod= _.min(finalLine,(fl)=>{return fl[1]})[1]*-1;
+                        hMod= _.min(finalLine,(fl)=>{return fl[2]})[2]*-1;
+                        _.each(_.range(finalLine.length),(r)=>{
+                            finalLine[r]=[finalLine[r][0],finalLine[r][1]+wMod,finalLine[r][2]+hMod];
+                        });
                         trueWidth = width;
                         trueHeight = height;
                         xMod=1;
                         yMod=1;
                         break;
                     case rotation<180:
-                        _.each(paths[p],(pa)=>{
-                            finalLine.push([pa[0],pa[2],pa[1]]);
-                        });
                         trueWidth = height;
                         trueHeight = width;
                         xMod=1;
                         yMod=1;
+                        _.each(paths[p],(pa)=>{
+                            finalLine.push([pa[0],pa[2],pa[1]]);
+                        });
+                        wMod= _.min(finalLine,(fl)=>{return fl[1]})[1]*-1;
+                        hMod= _.min(finalLine,(fl)=>{return fl[2]})[2]*-1;
+                        _.each(_.range(finalLine.length),(r)=>{
+                            finalLine[r]=[finalLine[r][0],finalLine[r][1]+wMod,finalLine[r][2]+hMod];
+                        });
                         break;
                     case rotation<225:
-                        _.each(paths[p],(pa)=>{
-                            finalLine.push([pa[0],-pa[2],pa[1]]);
-                        });
                         trueWidth = height;
                         trueHeight = width;
                         xMod=-1;
                         yMod=1;
                         mod2 = 1;
+                        _.each(paths[p],(pa)=>{
+                            finalLine.push([pa[0],-pa[2]+trueWidth,pa[1]]);
+                        });
+                        wMod= _.min(finalLine,(fl)=>{return fl[1]})[1]*-1;
+                        hMod= _.min(finalLine,(fl)=>{return fl[2]})[2]*-1;
+                        _.each(_.range(finalLine.length),(r)=>{
+                            finalLine[r]=[finalLine[r][0],finalLine[r][1]+wMod,finalLine[r][2]+hMod];
+                        });
                         break;
                     case rotation<270:
-                        _.each(paths[p],(pa)=>{
-                            finalLine.push([pa[0],-pa[1],pa[2]]);
-                        });
                         trueWidth = width;
                         trueHeight = height;
                         xMod=-1;
                         yMod=1;
+                        _.each(paths[p],(pa)=>{
+                            finalLine.push([pa[0],-pa[1]+trueWidth,pa[2]]);
+                        });
+                        wMod= _.min(finalLine,(fl)=>{return fl[1]})[1]*-1;
+                        hMod= _.min(finalLine,(fl)=>{return fl[2]})[2]*-1;
+                        _.each(_.range(finalLine.length),(r)=>{
+                            finalLine[r]=[finalLine[r][0],finalLine[r][1]+wMod,finalLine[r][2]+hMod];
+                        });
                         break;
                     case rotation<315:
-                        _.each(paths[p],(pa)=>{
-                            finalLine.push([pa[0],-pa[1],-pa[2]]);
-                        });
                         trueWidth = width;
                         trueHeight = height;
                         xMod=-1;
                         yMod=-1;
+                        _.each(paths[p],(pa)=>{
+                            finalLine.push([pa[0],-pa[1]+trueWidth,-pa[2]+trueHeight]);
+                        });
+                        wMod= _.min(finalLine,(fl)=>{return fl[1]})[1]*-1;
+                        hMod= _.min(finalLine,(fl)=>{return fl[2]})[2]*-1;
+                        _.each(_.range(finalLine.length),(r)=>{
+                            finalLine[r]=[finalLine[r][0],finalLine[r][1]+wMod,finalLine[r][2]+hMod];
+                        });
                         break;
                     case rotation<360:
-                        _.each(paths[p],(pa)=>{
-                            finalLine.push([pa[0],-pa[2],-pa[1]]);
-                        });
                         trueWidth = height;
                         trueHeight = width;
                         xMod=-1;
                         yMod=-1;
+                        _.each(paths[p],(pa)=>{
+                            finalLine.push([pa[0],-pa[2]+trueWidth,-pa[1]+trueHeight]);
+                        });
+                        wMod= _.min(finalLine,(fl)=>{return fl[1]})[1]*-1;
+                        hMod= _.min(finalLine,(fl)=>{return fl[2]})[2]*-1;
+                        _.each(_.range(finalLine.length),(r)=>{
+                            finalLine[r]=[finalLine[r][0],finalLine[r][1]+wMod,finalLine[r][2]+hMod];
+                        });
                         break;
                 }
                 lines[p] = createObj('path',{
@@ -3192,11 +3232,16 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                 .find((l)=>{
                     return state.PFCompanion.defaultToken['bar'+l+'Link'].toLowerCase()==='hp'})
                 .value(),
+            npc = getAttrByName(character.id,'is_npc')==='0' ? false : true,
+            mook = _.every([1,2,3],(n)=>{return _.isEmpty(token.get('bar'+n+'_link'))}),
             totDamage=0,
             conditionList = ['Exhausted','Fatigued','Blinded','Entangled','Invisible','Cowering','Fear','Pinned','Dazzled','Flat-Footed','Prone','Deafened','Grappled','Sickened','Helpless','Stunned','Energy Drain'],
             opsMatch,DR,resistances,immunities,weaknesses,effectMatch,damageTotal,otherEffects,DRdamageType,resistDamageType,opMatch,attrMatch,
             rowType,enhancement,spellSchool,condition,buff,rounds,actor,hp;
             
+        if(!state.PFCompanion.affect[(npc ? (mook ? 'mook':'npc'):'pc')+'affect']==='on'){
+            return;
+        }
         detailKeys = _.reject(detailKeys,(dk)=>{return details[dk]==='>'});
         if(_.isEmpty(detailKeys)||_.indexOf(detailKeys,'rid')===-1){
             return;
@@ -3272,7 +3317,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
             }
             if(et!=='effects'){
                 if(_.isNumber(effectTotals[et].damage)){
-                    effectTotals[et].damage = Math.max(effectTotals[et].damage+effectTotals[et].precision-(effectTotals[et].reduction+effectTotals[et].resist),0);
+                    effectTotals[et].damage = Math.max(effectTotals[et].damage+(effectTotals[et].precision||0)-(effectTotals[et].reduction+effectTotals[et].resist),0);
                 }
                 if(effectTotals[et].vulnerable && effectTotals[et].damage){
                     effectTotals[et].damage = Math.floor(effectTotals[et].damage*1.5);
@@ -3321,7 +3366,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                         }
                     }
                     if(condition || buff){
-                        await applyConditions(character,condition,buff);
+                        await applyConditions((mook ? token : character),condition,buff);
                     }
                     if(!_.isEmpty(effectTotals['effects'].effects)){
                         return effectWorker();
@@ -3557,9 +3602,9 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                     }
                 }else{
                     if(!npc){
-                        sendChat('Pathfinder Companion','/w "'+t.get('name')+'" &{template:pf_block} {{name=Roll a '+saveAttr+' save}} {{['+saveAttr+' Save](~'+character.id+'|'+saveType.match(/ref|will|fort/)[0]+'-Save)}}')
+                        sendChat('Pathfinder Companion','/w "'+t.get('name')+'" &{template:pf_attack} {{name='+t.get('name')+' Roll a '+saveName+'}} {{['+saveName+'](~'+character.id+'|'+saveType.match(/ref|will|fort/)[0]+'-Save)}}')
                     }else{
-                        whisperMsg+='{{'+t.get('name')+'=['+saveAttr+' Save](~'+character.id+'|NPC-'+saveType.match(/ref|will|fort/)[0]+'-Save)}}'
+                        whisperMsg+='{{'+t.get('name')+'=['+saveName+'](~'+character.id+'|NPC-'+saveType.match(/ref|will|fort/)[0]+'-Save)}}'
                     }
                 }
             });
@@ -4017,13 +4062,13 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                                 }
                             })
                             .value();
-                        replacePaths = _.uniq(replacePaths);
-                        _.each(replacePaths,(rp)=>{
-                            rPaths = _.filter(findObjs({type:'path',pageid:pageID}),(o)=>{return o.get('controlledby').match(rp) && !o.get('controlledby').match(/origin|target/)});
-                        });
-                        if(rPaths){
-                            paths = paths.concat(rPaths);
-                        }
+                    replacePaths = _.uniq(replacePaths);
+                    _.each(replacePaths,(rp)=>{
+                        rPaths = _.filter(findObjs({type:'path',pageid:pageID}),(o)=>{return o.get('controlledby').match(rp) && !o.get('controlledby').match(/origin|target/)});
+                    });
+                    if(rPaths){
+                        paths = paths.concat(rPaths);
+                    }
                     if(!_.isEmpty(tokens)){
                         if(cmdDetails.details.rollSave){
                             cmdDetails.details.rollSave = undefined;
@@ -4385,7 +4430,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                     }else if(state.PFCompanion.ResourceTrack!=='on' || parseInt(obj.get('current'))===0 && parseInt(obj.prev)!==0){
                         deleteAmmoTracking(extractRowID(obj.get('name')),findObjs({type:'attribute',characterid:obj.get('characterid')}));
                     }
-                }else if(state.PFCompanion.ResourceTrack==='on' && obj.get('name').match(/spellclass-[012]-casting_type|repeating_ability_-.+_name|repeating_ability_-.+_hasuses|repeating_item_-.+_name/)){
+                }else if(obj.get('name').match(/spellclass-[012]-casting_type|repeating_ability_-.+_name|repeating_spells_-.+_name|repeating_ability_-.+_hasuses|repeating_item_-.+_name/)){
                     _.defer(initializeCharacter,getObj('character',obj.get('characterid')));
                 }else if(state.PFCompanion.ResourceTrack==='on' && obj.get('name').match(/_-.+_description|_-.+_notes/)){
                     _.defer(checkForCustomTracking,obj);

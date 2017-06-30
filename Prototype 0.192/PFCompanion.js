@@ -17,7 +17,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
 
     var version = 'Prototype 0.192',
         sheetVersion = [1.62,1.63],
-        lastUpdate = 1498773394,
+        lastUpdate = 1498841106,
         schemaVersion = 0.192,
         defaults = {
             css: {
@@ -1370,54 +1370,58 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
     
     mapBars = function(graphic,character){
         try{
-        var bars = {},
-            attributes = findObjs({type:'attribute',characterid:character.id}),
-            npc = getAttrByName(character.id,'is_npc')==='0' ? false : true,
-            bar1Attr,bar2Attr,bar3Attr;
+            var bars = {},
+                attributes = findObjs({type:'attribute',characterid:character.id}),
+                npc = getAttrByName(character.id,'is_npc')==='0' ? false : true,
+                showname,updateNPC,
+                bar1Attr,bar2Attr,bar3Attr;
+                
+            if(!graphic){
+                graphic = _.find(findObjs({type:'graphic',represents:character.id}));
+            }
+            if(!graphic){
+                return;
+            }
+            showname = graphic.get('showname') ? 'on' : 'off';
+            updateNPC = npc ? (state.PFCompanion.defaultToken.showname===showname ? false : true) : false;
+            if(state.PFCompanion.defaultToken.bar1Link){
+                bar1Attr = _.find(attributes,(a)=>{return a.get('name').toLowerCase() === state.PFCompanion.defaultToken.bar1Link.toLowerCase()});
+                if(bar1Attr){
+                    graphic.set({bar1_link:(npc ? '' : bar1Attr.id),bar1_value:bar1Attr.get('current'),bar1_max:(bar1Attr.get('max')!=='0' ? bar1Attr.get('max') : '')});
+                }
+            }
+            if(state.PFCompanion.defaultToken.bar2Link){
+                bar2Attr = _.find(attributes,(a)=>{return a.get('name').toLowerCase() === state.PFCompanion.defaultToken.bar2Link.toLowerCase()});
+                if(bar2Attr){
+                    graphic.set({bar2_link:(npc ? '' : bar2Attr.id),bar2_value:bar2Attr.get('current'),bar2_max:(bar2Attr.get('max')!=='0' ? bar2Attr.get('max') : '')});
+                }
+            }
+            if(state.PFCompanion.defaultToken.bar3Link){
+                bar3Attr = _.find(attributes,(a)=>{return a.get('name').toLowerCase() === state.PFCompanion.defaultToken.bar3Link.toLowerCase()});
+                if(bar3Attr){
+                    graphic.set({bar3_link:(npc ? '' : bar3Attr.id),bar3_value:bar3Attr.get('current'),bar3_max:bar3Attr.get('max')});
+                }
+            }
             
-        if(!graphic){
-            graphic = _.find(findObjs({type:'graphic',represents:character.id}));
-        }
-        
-        if(state.PFCompanion.defaultToken.bar1Link){
-            bar1Attr = _.find(attributes,(a)=>{return a.get('name').toLowerCase() === state.PFCompanion.defaultToken.bar1Link.toLowerCase()});
-            if(bar1Attr){
-                graphic.set({bar1_link:(npc ? '' : bar1Attr.id),bar1_value:bar1Attr.get('current'),bar1_max:(bar1Attr.get('max')!=='0' ? bar1Attr.get('max') : '')});
+            graphic.set({showname:(state.PFCompanion.defaultToken.showname==='on' ? true : false),showplayers_bar1:(state.PFCompanion.defaultToken.bar1Visible==='on' ? true : false),showplayers_bar2:(state.PFCompanion.defaultToken.bar2Visible==='on' ? true : false),showplayers_bar3:(state.PFCompanion.defaultToken.bar3Visible==='on' ? true : false)});
+            if(bar3Attr || bar2Attr || bar1Attr){
+                if(!npc || updateNPC){
+                    updateAllTokens(character,graphic);
+                }
             }
-        }
-        if(state.PFCompanion.defaultToken.bar2Link){
-            bar2Attr = _.find(attributes,(a)=>{return a.get('name').toLowerCase() === state.PFCompanion.defaultToken.bar2Link.toLowerCase()});
-            if(bar2Attr){
-                graphic.set({bar2_link:(npc ? '' : bar2Attr.id),bar2_value:bar2Attr.get('current'),bar2_max:(bar2Attr.get('max')!=='0' ? bar2Attr.get('max') : '')});
-            }
-        }
-        if(state.PFCompanion.defaultToken.bar3Link){
-            bar3Attr = _.find(attributes,(a)=>{return a.get('name').toLowerCase() === state.PFCompanion.defaultToken.bar3Link.toLowerCase()});
-            if(bar3Attr){
-                graphic.set({bar3_link:(npc ? '' : bar3Attr.id),bar3_value:bar3Attr.get('current'),bar3_max:bar3Attr.get('max')});
-            }
-        }
-        
-        graphic.set({showplayers_bar1:(state.PFCompanion.defaultToken.bar1Visible==='on' ? true : false),showplayers_bar2:(state.PFCompanion.defaultToken.bar2Visible==='on' ? true : false),showplayers_bar3:(state.PFCompanion.defaultToken.bar3Visible==='on' ? true : false)});
-        if((bar3Attr || bar2Attr || bar1Attr) && !_.isEmpty(character.get('controlledby'))){
-            setDefaultTokenForCharacter(character,graphic);
-            updateAllTokens(character);
-        }
         }catch(err){
             sendError(err);
         }
     },
     
-    //problem is how the default token's bar values/maxes are set
     updateAllTokens = async function(character,graphic){
         try{
         var tokens = findObjs({type:'graphic',represents:character.id}),
-            tok,barValues,
-            defaultToken,
+            tok,barValues,defaultToken,mook,
             tokWorker = () =>{
                 try{
                     tok = tokens.shift();
-                    tok.set(_.defaults({left:tok.get('left'),top:tok.get('top'),tint_color:defaultToken.tint_color ? defaultToken.tint_color : 'transparent'},defaultToken));
+                    tok.set(_.defaults({left:tok.get('left'),top:tok.get('top'),tint_color:defaultToken.tint_color ? defaultToken.tint_color : 'transparent',name:(mook ? tok.get('name') : defaultToken.name),statusmarkers:(mook ? tok.get('statusmarkers') : defaultToken.statusmarkers),showname:(defaultToken.showname ? true : false)},defaultToken));
                     return _.isEmpty(tokens) ? 'tokens updated' : new Promise((resolve,reject)=>{
                         _.defer(()=>{resolve(tokWorker())});
                     });
@@ -1426,15 +1430,18 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                 }
             };
         if(graphic){
+            let currnam = graphic.get('name');
+            graphic.set('name',character.get('name'));
             setDefaultTokenForCharacter(character,graphic);
+            graphic.set('name',currnam);
             tokens=_.reject(tokens,(t)=>{return t.id===graphic.id});
         }
-        defaultToken = new Promise ((resolve,reject)=>{
+        defaultToken = await new Promise ((resolve,reject)=>{
             character.get('_defaulttoken',(t)=>{
                 resolve(!_.isEmpty(t) ? JSON.parse(t) : undefined);
             });
         });
-        defaultToken = await defaultToken;
+        mook = _.every([1,2,3],(n)=>{return _.isEmpty(defaultToken['bar'+n+'_link'])});
         if(defaultToken){
             defaultToken.statusmarkers = defaultToken.statusmarkers || '';
             defaultToken.left='';
@@ -1478,7 +1485,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                             mapBars(token,character);
                         }
                     }
-                }else if(dk.match(/showplayers_(?:bar|aura)[1-3]|playersedit_(?:bar|aura)[1-3]|aura[12]_square|light_(?:hassight|otherplayers)/)){
+                }else if(dk.match(/showplayers_(?:bar|aura)[1-3]|playersedit_(?:bar|aura)[1-3]|aura[12]_square|light_(?:hassight|otherplayers)|showname/)){
                     token.set(dk,(details[dk]==='on' ? true : false));
                 }else if(dk.match(/bar[1-3]_value/)){
                     attribute = details[dk].match(/^\s*$/) ? '' : _.find(findObjs({type:'attribute',characterid:character.id}),(a)=>{return a.get('name').match(new RegExp('^'+details[dk]+'$','i'))});
@@ -1520,87 +1527,88 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
             }
         }else{
             msg+='<b>Represents</b><div style="float:right">'+ makeButton('!pfc --token,represents=?{Name of Character} --token',(_.isEmpty(token.get('represents')) ? 'NONE' : getObj('character',token.get('represents')).get('name')),'transparent','black','Set what character this token represents') +'</div><div style="clear: both"></div>'
-            +(!_.isEmpty(token.get('represents')) ? 
-            '<div style="textalign:center;font-size:110%;font-weight:bold;">Dimensions</div>'
-            +'<div style="font-size:90%;">(In Squares)</div>'
-            +'<b>Width</b><div style="float:right;">'+makeButton('!pfc --token,width=?{Unit Width} --token',token.get('width'),'transparent','black','Set the width of the token in units (# of squares)')+'</div><div style="clear:both;">'
-            +'<b>Height</b><div style="float:right;">'+makeButton('!pfc --token,height=?{Unit Height} --token',token.get('height'),'transparent','black','Set the height of the token in units (# of squares)')+'</div><div style="clear:both;">'
-            //Bar Settings
-            +'<br><div style="textalign:center;font-size:110%;font-weight:bold;">Bars</div>'
-            +'<table style="width:100%;table-layout:fixed;overflow:hidden;word-wrap:break-all;text-align:center;">'
-                +'<colgroup>'
-                    +'<col span="4" style="width:25%;word-wrap:break-word;">'
-                +'</colgroup>'
-                +'<tr>'
-                    +'<th> </th>'
-                    +'<th>Bar 3</th>'
-                    +'<th>Bar 1</th>'
-                    +'<th>Bar 2</th>'
-                +'</tr><tr>'
-                    +'<td><b>Link</b></td>'
-                    +'<td>'+makeButton('!pfc --token,bar3_link='+linkQuery+' --token',links.bar3 ? links.bar3.get('name') : '_','transparent',links.bar3 ? 'black' : 'transparent','Set what attribute to link bar 3 to')+'</td>'
-                    +'<td>'+makeButton('!pfc --token,bar1_link='+linkQuery+' --token',links.bar1 ? links.bar1.get('name') : '_','transparent',links.bar1 ? 'black' : 'transparent','Set what attribute to link bar 1 to')+'</td>'
-                    +'<td>'+makeButton('!pfc --token,bar2_link='+linkQuery+' --token',links.bar2 ? links.bar2.get('name') : '_','transparent',links.bar2 ? 'black' : 'transparent','Set what attribute to link bar 2 to')+'</td>'
-                +'</tr><tr>'
-                    +'<td><b>Value</b></td>'
-                    +'<td>'+makeButton('!pfc --token,bar3_value=?{Pull Values From} --token',(token.get('bar3_value')+'/'+token.get('bar3_max')),'transparent','black','If bar 3 is not linked directly, what attribute should it pull its default values from')+'</td>'
-                    +'<td>'+makeButton('!pfc --token,bar1_value=?{Pull Values From} --token',(token.get('bar1_value')+'/'+token.get('bar1_max')),'transparent','black','If bar 1 is not linked directly, what attribute should it pull its default values from')+'</td>'
-                    +'<td>'+makeButton('!pfc --token,bar2_value=?{Pull Values From} --token',(token.get('bar2_value')+'/'+token.get('bar2_max')),'transparent','black','If bar 2 is not linked directly, what attribute should it pull its default values from')+'</td>'
-                +'</tr><tr>'
-                    +'<td><b>Visible</b></td>'
-                    +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,showplayers_bar3='+(token.get('showplayers_bar3') ? 'off' : 'on')+' --token',(token.get('showplayers_bar3') ? '3' : '_'),'transparent','black','Toggle Visibility on/off')+'</div></td>'
-                    +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,showplayers_bar1='+(token.get('showplayers_bar1') ? 'off' : 'on')+' --token',(token.get('showplayers_bar1') ? '3' : '_'),'transparent','black','Toggle Visibility on/off')+'</div></td>'
-                    +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,showplayers_bar2='+(token.get('showplayers_bar2') ? 'off' : 'on')+' --token',(token.get('showplayers_bar2') ? '3' : '_'),'transparent','black','Toggle Visibility on/off')+'</div></td>'
-                +'</tr><tr>'
-                    +'<td><b>Edit</b></td>'
-                    +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,playersedit_bar3='+(token.get('playersedit_bar3') ? 'off' : 'on')+' --token',(token.get('playersedit_bar3') ? '3' : '_'),'transparent','black','Toggle Player ability to edit on/off')+'</div></td>'
-                    +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,playersedit_bar1='+(token.get('playersedit_bar1') ? 'off' : 'on')+' --token',(token.get('playersedit_bar1') ? '3' : '_'),'transparent','black','Toggle Player ability to edit on/off')+'</div></td>'
-                    +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,playersedit_bar2='+(token.get('playersedit_bar2') ? 'off' : 'on')+' --token',(token.get('playersedit_bar2') ? '3' : '_'),'transparent','black','Toggle Player ability to edit on/off')+'</div></td>'
-                +'</tr>'
-            +'</table>'
-            //Aura Settings
-            +'<br><div style="textalign:center;font-size:110%;font-weight:bold;">Auras</div>'
-            +'<table style="width:100%;table-layout:fixed;overflow:hidden;word-wrap:break-all;text-align:center;">'
-                +'<colgroup>'
-                    +'<col span="3" style="width:25%;word-wrap:break-word;">'
-                +'</colgroup>'
-                +'<tr>'
-                    +'<th> </th>'
-                    +'<th>Aura 1</th>'
-                    +'<th>Aura 2</th>'
-                +'</tr><tr>'
-                    +'<td><b>Radius</b></td>'
-                    +'<td>'+makeButton('!pfc --token,aura1_radius=?{Aura Radius, in page units} --token',!_.isEmpty(token.get('aura1_radius')) ? token.get('aura1_radius') : '_','transparent',!_.isEmpty(token.get('aura1_radius')) ? 'black':'transparent','Set the radius of the aura in units(squares)')+'</td>'
-                    +'<td>'+makeButton('!pfc --token,aura2_radius=?{Aura Radius, in page units} --token',!_.isEmpty(token.get('aura2_radius')) ? token.get('aura2_radius') : '_','transparent',!_.isEmpty(token.get('aura2_radius')) ? 'black':'transparent','Set the radius of the aura in units(squares)')+'</td>'
-                +'</tr><tr>'
-                    +'<td><b>Color</b></td>'
-                    +'<td>'+makeButton('!pfc --token,aura1_color=?{Hex Color} --token',token.get('aura1_color'),token.get('aura1_color'),token.get('aura1_color'),'Set the color of the aura in hex')+'</td>'
-                    +'<td>'+makeButton('!pfc --token,aura2_color=?{Hex Color} --token',token.get('aura2_color'),token.get('aura2_color'),token.get('aura2_color'),'Set the color of the aura in hex')+'</td>'
-                +'</tr><tr>'
-                    +'<td><b>Square</b></td>'
-                    +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,aura1_square='+(token.get('aura1_square') ? 'off' : 'on')+' --token',(token.get('aura1_square') ? '3' : '_'),'transparent','black','Toggle between square and circular aura')+'</div></td>'
-                    +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,aura2_square='+(token.get('aura2_square') ? 'off' : 'on')+' --token',(token.get('aura2_square') ? '3' : '_'),'transparent','black','Toggle between square and circular aura')+'</div></td>'
-                +'</tr><tr>'
-                    +'<td><b>Visible</b></td>'
-                    +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,showplayers_aura1='+(token.get('showplayers_aura1') ? 'off' : 'on')+' --token',(token.get('showplayers_aura1') ? '3' : '_'),'transparent','black','Toggle aura visibility on/off')+'</div></td>'
-                    +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,showplayers_aura2='+(token.get('showplayers_aura2') ? 'off' : 'on')+' --token',(token.get('showplayers_aura2') ? '3' : '_'),'transparent','black','Toggle aura visibility on/off')+'</div></td>'
-                +'</tr><tr>'
-                    +'<td><b>Edit</b></td>'
-                    +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,playersedit_aura1='+(token.get('playersedit_aura1') ? 'off' : 'on')+' --token',(token.get('playersedit_aura1') ? '3' : '_'),'transparent','black','Toggle player ability to edit this aura on/off')+'</div></td>'
-                    +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,playersedit_aura2='+(token.get('playersedit_aura2') ? 'off' : 'on')+' --token',(token.get('playersedit_aura2') ? '3' : '_'),'transparent','black','Toggle player ability to edit this aura on/off')+'</div></td>'
-                +'</tr>'
-            +'</table>'
-            //Tint Color
-            +'<br><b>Tint Color</b><div style="float:right;">'+makeButton('!pfc --token,tint_color=?{Hex Color} --token',token.get('tint_color'),token.get('tint_color'),token.get('tint_color'),'Set the token tint in hex')+'</div><div style="clear:both;"></div>'
-            //Light Settings
-            +'<br><div style="textalign:center;font-size:110%;font-weight:bold;">Lighting</div>'
-            +'<br><b>Radius</b><div style="float:right;">'+makeButton('!pfc --token,light_radius=?{Bright Radius, in page units} --token',!_.isEmpty(token.get('light_radius')) ? token.get('light_radius') : '_','transparent',!_.isEmpty(token.get('light_radius')) ? 'black':'transparent','Total light radius in units(squares)')+'</div><div style="clear:both;">'
-            +'<b>Dim Radius</b><div style="float:right;">'+makeButton('!pfc --token,light_dimradius=?{Dim Radius, in page units} --token',!_.isEmpty(token.get('light_dimradius')) ? token.get('light_dimradius') : '_','transparent',!_.isEmpty(token.get('light_dimradius')) ? 'black':'transparent','Start of Dim light radius in units(squares)')+'</div><div style="clear:both;">'
-            +'<b>Light Angle</b><div style="float:right;">'+makeButton('!pfc --token,light_angle=?{Degrees to light} --token',!_.isEmpty(token.get('light_angle')) ? token.get('light_angle') : '360','transparent','black','0-360 degrees or blank for default(360)')+'</div><div style="clear:both;">'
-            +'<b>Sight</b><div style="float:right;font-family:pictos;">'+makeButton('!pfc --token,light_hassight='+(token.get('light_hassight') ? 'off' : 'on')+' --token',(token.get('light_hassight') ? '3' : '_'),'transparent','black','Toggle sight on/off')+'</div><div style="clear:both;">'
-            +'<b>Visible</b><div style="float:right;font-family:pictos;">'+makeButton('!pfc --token,light_otherplayers='+(token.get('light_otherplayers') ? 'off' : 'on')+' --token',(token.get('light_otherplayers') ? '3' : '_'),'transparent','black','Can others see the light emitted by this token')+'</div><div style="clear:both;">'
-            +'<b>Vision Angle</b><div style="float:right;">'+makeButton('!pfc --token,light_losangle=?{Can see what degrees} --token',!_.isEmpty(token.get('light_losangle')) ? token.get('light_losangle') : '360','transparent','black','0-360 or blank for default(360)')+'</div><div style="clear:both;">'
-            +'<b>Multiplier</b><div style="float:right;">'+makeButton('!pfc --token,light_multiplier=?{Multiply Light by} --token',!_.isEmpty(token.get('light_multiplier')) ? token.get('aura1_radius') : '1','transparent','black','Multiply all light by X')+'</div><div style="clear:both;">'
+                +'<b>Nameplate</b><div style="font-family:pictos;float:right">'+makeButton('!pfc --token,showname='+(token.get('showname') ? 'off' : 'on')+' --token',(token.get('showname') ? '3':'_'),'transparent','black','Toggle nameplate display')+'</div><div style="clear: both"></div>'
+                +(!_.isEmpty(token.get('represents')) ? 
+                '<div style="textalign:center;font-size:110%;font-weight:bold;">Dimensions</div>'
+                +'<div style="font-size:90%;">(In Squares)</div>'
+                +'<b>Width</b><div style="float:right;">'+makeButton('!pfc --token,width=?{Unit Width} --token',token.get('width'),'transparent','black','Set the width of the token in units (# of squares)')+'</div><div style="clear:both;">'
+                +'<b>Height</b><div style="float:right;">'+makeButton('!pfc --token,height=?{Unit Height} --token',token.get('height'),'transparent','black','Set the height of the token in units (# of squares)')+'</div><div style="clear:both;">'
+                //Bar Settings
+                +'<br><div style="textalign:center;font-size:110%;font-weight:bold;">Bars</div>'
+                +'<table style="width:100%;table-layout:fixed;overflow:hidden;word-wrap:break-all;text-align:center;">'
+                    +'<colgroup>'
+                        +'<col span="4" style="width:25%;word-wrap:break-word;">'
+                    +'</colgroup>'
+                    +'<tr>'
+                        +'<th> </th>'
+                        +'<th>Bar 3</th>'
+                        +'<th>Bar 1</th>'
+                        +'<th>Bar 2</th>'
+                    +'</tr><tr>'
+                        +'<td><b>Link</b></td>'
+                        +'<td>'+makeButton('!pfc --token,bar3_link='+linkQuery+' --token',links.bar3 ? links.bar3.get('name') : '_','transparent',links.bar3 ? 'black' : 'transparent','Set what attribute to link bar 3 to')+'</td>'
+                        +'<td>'+makeButton('!pfc --token,bar1_link='+linkQuery+' --token',links.bar1 ? links.bar1.get('name') : '_','transparent',links.bar1 ? 'black' : 'transparent','Set what attribute to link bar 1 to')+'</td>'
+                        +'<td>'+makeButton('!pfc --token,bar2_link='+linkQuery+' --token',links.bar2 ? links.bar2.get('name') : '_','transparent',links.bar2 ? 'black' : 'transparent','Set what attribute to link bar 2 to')+'</td>'
+                    +'</tr><tr>'
+                        +'<td><b>Value</b></td>'
+                        +'<td>'+makeButton('!pfc --token,bar3_value=?{Pull Values From} --token',(token.get('bar3_value')+'/'+token.get('bar3_max')),'transparent','black','If bar 3 is not linked directly, what attribute should it pull its default values from')+'</td>'
+                        +'<td>'+makeButton('!pfc --token,bar1_value=?{Pull Values From} --token',(token.get('bar1_value')+'/'+token.get('bar1_max')),'transparent','black','If bar 1 is not linked directly, what attribute should it pull its default values from')+'</td>'
+                        +'<td>'+makeButton('!pfc --token,bar2_value=?{Pull Values From} --token',(token.get('bar2_value')+'/'+token.get('bar2_max')),'transparent','black','If bar 2 is not linked directly, what attribute should it pull its default values from')+'</td>'
+                    +'</tr><tr>'
+                        +'<td><b>Visible</b></td>'
+                        +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,showplayers_bar3='+(token.get('showplayers_bar3') ? 'off' : 'on')+' --token',(token.get('showplayers_bar3') ? '3' : '_'),'transparent','black','Toggle Visibility on/off')+'</div></td>'
+                        +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,showplayers_bar1='+(token.get('showplayers_bar1') ? 'off' : 'on')+' --token',(token.get('showplayers_bar1') ? '3' : '_'),'transparent','black','Toggle Visibility on/off')+'</div></td>'
+                        +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,showplayers_bar2='+(token.get('showplayers_bar2') ? 'off' : 'on')+' --token',(token.get('showplayers_bar2') ? '3' : '_'),'transparent','black','Toggle Visibility on/off')+'</div></td>'
+                    +'</tr><tr>'
+                        +'<td><b>Edit</b></td>'
+                        +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,playersedit_bar3='+(token.get('playersedit_bar3') ? 'off' : 'on')+' --token',(token.get('playersedit_bar3') ? '3' : '_'),'transparent','black','Toggle Player ability to edit on/off')+'</div></td>'
+                        +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,playersedit_bar1='+(token.get('playersedit_bar1') ? 'off' : 'on')+' --token',(token.get('playersedit_bar1') ? '3' : '_'),'transparent','black','Toggle Player ability to edit on/off')+'</div></td>'
+                        +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,playersedit_bar2='+(token.get('playersedit_bar2') ? 'off' : 'on')+' --token',(token.get('playersedit_bar2') ? '3' : '_'),'transparent','black','Toggle Player ability to edit on/off')+'</div></td>'
+                    +'</tr>'
+                +'</table>'
+                //Aura Settings
+                +'<br><div style="textalign:center;font-size:110%;font-weight:bold;">Auras</div>'
+                +'<table style="width:100%;table-layout:fixed;overflow:hidden;word-wrap:break-all;text-align:center;">'
+                    +'<colgroup>'
+                        +'<col span="3" style="width:25%;word-wrap:break-word;">'
+                    +'</colgroup>'
+                    +'<tr>'
+                        +'<th> </th>'
+                        +'<th>Aura 1</th>'
+                        +'<th>Aura 2</th>'
+                    +'</tr><tr>'
+                        +'<td><b>Radius</b></td>'
+                        +'<td>'+makeButton('!pfc --token,aura1_radius=?{Aura Radius, in page units} --token',!_.isEmpty(token.get('aura1_radius')) ? token.get('aura1_radius') : '_','transparent',!_.isEmpty(token.get('aura1_radius')) ? 'black':'transparent','Set the radius of the aura in units(squares)')+'</td>'
+                        +'<td>'+makeButton('!pfc --token,aura2_radius=?{Aura Radius, in page units} --token',!_.isEmpty(token.get('aura2_radius')) ? token.get('aura2_radius') : '_','transparent',!_.isEmpty(token.get('aura2_radius')) ? 'black':'transparent','Set the radius of the aura in units(squares)')+'</td>'
+                    +'</tr><tr>'
+                        +'<td><b>Color</b></td>'
+                        +'<td>'+makeButton('!pfc --token,aura1_color=?{Hex Color} --token',token.get('aura1_color'),token.get('aura1_color'),token.get('aura1_color'),'Set the color of the aura in hex')+'</td>'
+                        +'<td>'+makeButton('!pfc --token,aura2_color=?{Hex Color} --token',token.get('aura2_color'),token.get('aura2_color'),token.get('aura2_color'),'Set the color of the aura in hex')+'</td>'
+                    +'</tr><tr>'
+                        +'<td><b>Square</b></td>'
+                        +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,aura1_square='+(token.get('aura1_square') ? 'off' : 'on')+' --token',(token.get('aura1_square') ? '3' : '_'),'transparent','black','Toggle between square and circular aura')+'</div></td>'
+                        +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,aura2_square='+(token.get('aura2_square') ? 'off' : 'on')+' --token',(token.get('aura2_square') ? '3' : '_'),'transparent','black','Toggle between square and circular aura')+'</div></td>'
+                    +'</tr><tr>'
+                        +'<td><b>Visible</b></td>'
+                        +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,showplayers_aura1='+(token.get('showplayers_aura1') ? 'off' : 'on')+' --token',(token.get('showplayers_aura1') ? '3' : '_'),'transparent','black','Toggle aura visibility on/off')+'</div></td>'
+                        +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,showplayers_aura2='+(token.get('showplayers_aura2') ? 'off' : 'on')+' --token',(token.get('showplayers_aura2') ? '3' : '_'),'transparent','black','Toggle aura visibility on/off')+'</div></td>'
+                    +'</tr><tr>'
+                        +'<td><b>Edit</b></td>'
+                        +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,playersedit_aura1='+(token.get('playersedit_aura1') ? 'off' : 'on')+' --token',(token.get('playersedit_aura1') ? '3' : '_'),'transparent','black','Toggle player ability to edit this aura on/off')+'</div></td>'
+                        +'<td><div style="font-family:pictos;">'+makeButton('!pfc --token,playersedit_aura2='+(token.get('playersedit_aura2') ? 'off' : 'on')+' --token',(token.get('playersedit_aura2') ? '3' : '_'),'transparent','black','Toggle player ability to edit this aura on/off')+'</div></td>'
+                    +'</tr>'
+                +'</table>'
+                //Tint Color
+                +'<br><b>Tint Color</b><div style="float:right;">'+makeButton('!pfc --token,tint_color=?{Hex Color} --token',token.get('tint_color'),token.get('tint_color'),token.get('tint_color'),'Set the token tint in hex')+'</div><div style="clear:both;"></div>'
+                //Light Settings
+                +'<br><div style="textalign:center;font-size:110%;font-weight:bold;">Lighting</div>'
+                +'<br><b>Radius</b><div style="float:right;">'+makeButton('!pfc --token,light_radius=?{Bright Radius, in page units} --token',!_.isEmpty(token.get('light_radius')) ? token.get('light_radius') : '_','transparent',!_.isEmpty(token.get('light_radius')) ? 'black':'transparent','Total light radius in units(squares)')+'</div><div style="clear:both;">'
+                +'<b>Dim Radius</b><div style="float:right;">'+makeButton('!pfc --token,light_dimradius=?{Dim Radius, in page units} --token',!_.isEmpty(token.get('light_dimradius')) ? token.get('light_dimradius') : '_','transparent',!_.isEmpty(token.get('light_dimradius')) ? 'black':'transparent','Start of Dim light radius in units(squares)')+'</div><div style="clear:both;">'
+                +'<b>Light Angle</b><div style="float:right;">'+makeButton('!pfc --token,light_angle=?{Degrees to light} --token',!_.isEmpty(token.get('light_angle')) ? token.get('light_angle') : '360','transparent','black','0-360 degrees or blank for default(360)')+'</div><div style="clear:both;">'
+                +'<b>Sight</b><div style="float:right;font-family:pictos;">'+makeButton('!pfc --token,light_hassight='+(token.get('light_hassight') ? 'off' : 'on')+' --token',(token.get('light_hassight') ? '3' : '_'),'transparent','black','Toggle sight on/off')+'</div><div style="clear:both;">'
+                +'<b>Visible</b><div style="float:right;font-family:pictos;">'+makeButton('!pfc --token,light_otherplayers='+(token.get('light_otherplayers') ? 'off' : 'on')+' --token',(token.get('light_otherplayers') ? '3' : '_'),'transparent','black','Can others see the light emitted by this token')+'</div><div style="clear:both;">'
+                +'<b>Vision Angle</b><div style="float:right;">'+makeButton('!pfc --token,light_losangle=?{Can see what degrees} --token',!_.isEmpty(token.get('light_losangle')) ? token.get('light_losangle') : '360','transparent','black','0-360 or blank for default(360)')+'</div><div style="clear:both;">'
+                +'<b>Multiplier</b><div style="float:right;">'+makeButton('!pfc --token,light_multiplier=?{Multiply Light by} --token',!_.isEmpty(token.get('light_multiplier')) ? token.get('aura1_radius') : '1','transparent','black','Multiply all light by X')+'</div><div style="clear:both;">'
             : '');
             msg+='</div>';
             sendChat('Pathfinder Companion',msg,null,{noarchive:true});
@@ -3945,6 +3953,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
         var linkQuery = '?{Name of attribute to link to, case insensitive. Repeating Sections not valid}';
         return !menu ? '<div style="border-top: 1px solid #000000; border-radius: .2em; background-color: white;">'//markermsg div start
                 +'<b>Maintain PC Default Tokens:</b><div style="float:right;">'+makeButton('!pfc --config,defaultToken='+(state.PFCompanion.defaultToken.enable==='on' ? 'off' : 'on')+' --config',(state.PFCompanion.defaultToken.enable==='on' ? 'ON' : 'OFF'),(state.PFCompanion.defaultToken.enable==='on' ? 'green' : 'red'),'black','Keep non-mook character'+ch("'")+'s default tokens updated when anything but bar values changes.')+'</div><div style="clear: both"></div>'
+                +'<b>Nameplate</b><div style="float:right;font-family:pictos;">'+makeButton('!pfc --config,showname='+(state.PFCompanion.defaultToken.showname==='on' ? 'off' : 'on')+' --config',(state.PFCompanion.defaultToken.showname==='on' ? '3':'_'),'transparent','black','Toggle nameplate')+'</div><div style="clear:both;"></div>'
                 +(state.PFCompanion.defaultToken.enable==='on' ? 
                 '<table style="width:100%;table-layout:fixed;overflow:hidden;word-break:break-all;text-align:center;">'
                     +'<colgroup>'
@@ -3967,7 +3976,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                         +'<td><span style="font-family:pictos;">'+makeButton('!pfc --config,bar2Visible='+(state.PFCompanion.defaultToken.bar2Visible==='on' ? 'off' : 'on')+' --config',(state.PFCompanion.defaultToken.bar2Visible==='on' ? '3' : '_'),'transparent','black','Is this bar visible to players by default or not')+'</span></td>'
                     +'</tr>'
                 +'</table>'
-                +makeButton('!pfc --token,defaults,folder=?{Aplly to which Folder}','Apply to Folder','transparent','black','Apply the above token defaults to all characters with a token on the VTT in a specific folder')+'<span style="float:right;">'+makeButton('!pfc --token,defaults','Apply to All','transparent','black','Apply the above token defaults to all characters with a token on the VTT')+'</span>'
+                +makeButton('!pfc --token,defaults,folder=?{Apply to which Folder}','Apply to Folder','transparent','black','Apply the above token defaults to all characters with a token on the VTT in a specific folder')+'<span style="float:right;">'+makeButton('!pfc --token,defaults','Apply to All','transparent','black','Apply the above token defaults to all characters with a token on the VTT')+'</span>'
                 :
                 '')
             +'</div>' : '';
@@ -4008,13 +4017,13 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
     },
     
     configAssembler = function(who,menu){
-        var menu = '/w "'+who+'" <div style="border: 1px solid black; background-color: white; padding: 3px 3px;">'//overall div for nice formatting of control panel
+        var msg = '/w "'+who+'" <div style="border: 1px solid black; background-color: white; padding: 3px 3px;">'//overall div for nice formatting of control panel
                     +'<div style="font-weight: bold; border-bottom: 1px solid black;font-size: 130%;">'//Control Panel Header div
                     +'[Pathfinder]('+mediumLogo+')<br>Companion API Script v'+version+'<b> Options</b>'
                     +'</div>'+tokenSetupConfig(menu)+resourceConfig(menu)+hpConfig(menu)+mookConfig(menu)+tokenConfig(menu)+markerConfig(menu)+affectConfig(menu)
                     +'<div style="border-top: 1px solid #000000; border-radius: .2em; background-color: white;">'
                     +makeButton('!pfc --i','APPLY SETTINGS TO CAMPAIGN','#C0C0C0','#228B22','Reinitialize the campaign, this may take several minutes depending on campaign size.')+'</div></div>';//end Control Panel Header div
-        sendChat('Pathfinder Companion',menu,null,{noarchive:true});
+        sendChat('Pathfinder Companion',msg,null,{noarchive:true});
     },
     
     configHandler = function(who,details){
@@ -4023,7 +4032,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                 validKeys = [,'hp','ResourceTrack','TAS','mook'],
                 createKeys = [/skill$/,/skillc$/,/checks$/,/defense$/,/attack$/,/abilities$/,/item$/,/initiative$/,/spellbook$/,/fort$/,/will$/,/ref$/],
                 markerKeys = ['markers','Blinded','Entangled','Invisible','Cowering','Fear','Pinned','Dazzled','Flat-Footed','Prone','Deafened','Grappled','Sickened','Helpless','Stunned'],
-                tokenKeys = ['defaultToken','bar1Link','bar1Visible','bar2Link','bar2Visible','bar3Link','bar3Visible'],
+                tokenKeys = ['defaultToken','bar1Link','bar1Visible','bar2Link','bar2Visible','bar3Link','bar3Visible','showname'],
                 affectKeys = ['status','mookaffect','npcaffect','pcaffect','mookroll','npcroll','pcroll'],
                 npc,allKeys;
                 
@@ -4224,9 +4233,15 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                             characters = findObjs({type:'character'});
                         }
                         sendChat('Pathfinder Companion','/w gm Applying default token settings to indicated characters');
-                        _.each(characters,(c)=>{
-                            mapBars(null,c);
+                        await new Promise((resolve,reject)=>{
+                            _.defer((chars)=>{
+                                _.each(chars,(c)=>{
+                                    mapBars(null,c);
+                                });
+                                resolve('done');
+                            },characters);
                         });
+                        sendChat('Pathfinder Companion','/w gm Default token settings applied');
                     }else{
                         if(!playerIsGM(msg.playerid)){
                             _.some(msg.selected,(s)=>{

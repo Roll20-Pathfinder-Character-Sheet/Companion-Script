@@ -1,5 +1,5 @@
 var PFCompanion = PFCompanion || (function() {var scriptStart = new Error;
-    scriptStart = scriptStart.stack.match(/^[^\d]+(\d+)/)[1]*1;
+    scriptStart = scriptStart.stack.match(/apiscript\.js:(\d+)/)[1]*1;
     'use strict';
 /*
 Script: Pathfinder Companion Script for the Neceros Roll20 Sheet
@@ -17,7 +17,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
 
     var version = 'Prototype 0.192',
         sheetVersion = [1.62,1.63],
-        lastUpdate = 1498841106,
+        lastUpdate = 1498882160,
         schemaVersion = 0.192,
         defaults = {
             css: {
@@ -1289,7 +1289,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                 if(character.get('type')==='character'){
                     await createAttrWithWorker('condition-'+(conditionName==='Energy Drain' ? 'Drained' : conditionName),cid,conditionAttributes,conditionState);
                 }
-                if(state.PFCompanion.defaultToken.enable==='on' && (barLinked || !_.isEmpty(character.get('controlledby')))){
+                if(state.PFCompanion.defaultToken.enable==='on' && barLinked){
                     graphic = findObjs({type:'graphic',represents:cid})[0];
                     if(graphic){
                         applyStatus(character,state.PFCompanion.markers[conditionName],parseInt(conditionState)===0 ? false : (condition.match(/exha/i) ? 2 : (conditionName==='Energy Drain' ? (Math.abs(toSet)===0 ? false : Math.min(Math.abs(toSet),9)) : true)));
@@ -1304,7 +1304,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                     buffNameAttr ? createAttrWithWorker(buffNameAttr.get('name').replace('name','enable_toggle'),cid,attributes,buffState) : undefined;
                 }
                 buffMatch = buffNameAttr.get('current').match(/(.*(?=\s+\|\|\s+))\s+\|\|\s+(.*)/);
-                if(state.PFCompanion.defaultToken.enable==='on' && (barLinked || !_.isEmpty(character.get('controlledby'))) && buffMatch){
+                if(state.PFCompanion.defaultToken.enable==='on' && barLinked && buffMatch){
                     graphic = findObjs({type:'graphic',represents:cid})[0];
                     if(graphic){
                         _.some(statusquery,(sq)=>{return sq.match(buffMatch[2]) ? buffStatus=sq : false}) ? applyStatus(character,buffStatus,parseInt(buffState)===0 ? false : true) : undefined;
@@ -3679,7 +3679,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
             
         }
         rollId = msg.content.match(/(?:\|\|rowid=([^\|]+)\|\|)/) ? msg.content.match(/(?:\|\|rowid=([^\|]+)\|\|)/)[1] : undefined;
-        if(msg.rolltemplate==='pf_attack' && !_.isEmpty(character.get('controlledby'))&&rollId){
+        if(msg.rolltemplate==='pf_attack'&&rollId){
             ammo = msg.content.match(/(?:\|\|item=([^\s][^\|]+))/) ? msg.content.match(/(?:\|\|item=([^\s][^\|]+))/)[1] : undefined;
             mainAmmo = msg.content.match(/(?:\|\|mainitem=([^\s][^\|]+))/) ? msg.content.match(/(?:\|\|mainitem=([^\s][^\|]+))/)[1] : undefined;
             offAmmo = msg.content.match(/(?:\|\|offitem=([^\s][^\|]+))/) ? msg.content.match(/(?:\|\|offitem=([^\s][^\|]+))/)[1] : undefined;
@@ -4610,7 +4610,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                         barLinked = _.some([1,2,3],(b)=>{
                             return !_.isEmpty(defaultToken['bar'+b+'_link']);
                         });
-                        if(!_.isEmpty(character.get('controlledby'))||barLinked){
+                        if(barLinked){
                             cbName = cbName.replace(/(?:.*(?=\s+\|\|\s+))\s+\|\|\s+/,'');
                             if(cbName = statusquery[_.indexOf(statusquery,cbName)]){
                                 applyStatus(character,cbName,parseInt(obj.get('current'))===0 ? false : (condName === 'Drained' ? Math.abs(parseInt(obj.get('current'))) : ((condName==='Fatigued' && parseInt(obj.get('current'))===3) ? '2' : true)));
@@ -4641,7 +4641,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                         barLinked = _.some([1,2,3],(b)=>{
                             return !_.isEmpty(defaultToken['bar'+b+'_link']);
                         });
-                        if(!_.isEmpty(character.get('controlledby'))||barLinked){
+                        if(barLinked){
                             cbName = cbName.replace(/(?:.*(?=\s+\|\|\s+))\s+\|\|\s+/,'');
                             _.some(statusquery,(sq)=>{return sq.match(cbName) ? cbName=sq : false});
                             applyStatus(character,cbName,parseInt(obj.get('current'))===0 ? false : true);
@@ -4706,7 +4706,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                             barLinked = _.some([1,2,3],(b)=>{
                                 return !_.isEmpty(defaultToken['bar'+b+'_link']);
                             });
-                            if(!_.isEmpty(character.get('controlledby'))||barLinked||graphic){
+                            if(barLinked||graphic){
                                 applyConditions(graphic||character,condition,buff,undefined,'remove');
                             }
                         }
@@ -4734,7 +4734,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                                 return !_.isEmpty(defaultToken['bar'+b+'_link']);
                             });
                         }
-                        if((character ? !_.isEmpty(character.get('controlledby')) : true)||barLinked||graphic){
+                        if(barLinked||graphic){
                             applyConditions(graphic||character,condition,buff,undefined,'remove');
                             campaignHandler(obj,'change',newPrev,1);
                         }
@@ -4793,7 +4793,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                             barLinked = _.some(ignoreChange,(b)=>{
                                 return !_.isEmpty(obj.get('bar'+b+'_link'));
                             });
-                            if(!_.isEmpty(character.get('controlledby'))||barLinked){
+                            if(barLinked){
                                 if(obj.get('statusmarkers')!==prev.statusmarkers){
                                     removed = !_.isEmpty(prev.statusmarkers) ? _.reject(prev.statusmarkers.split(','),(p)=>{
                                         return _.some(obj.get('statusmarkers').split(','),(o)=>{

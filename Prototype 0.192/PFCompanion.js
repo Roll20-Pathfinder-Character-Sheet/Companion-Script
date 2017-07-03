@@ -17,7 +17,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
 
     var version = 'Prototype 0.192',
         sheetVersion = [1.62,1.63],
-        lastUpdate = 1498882160,
+        lastUpdate = 1499102241,
         schemaVersion = 0.192,
         defaults = {
             css: {
@@ -436,6 +436,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                 sectionType = 'none';
             }
             rollTemplate = macroTextObject.get('current').match(/&{template:[^}]+}\s*/);
+            
             if(!rollTemplate){
                 return;
             }

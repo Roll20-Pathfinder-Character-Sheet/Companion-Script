@@ -16,7 +16,7 @@ var PFCompanion = PFCompanion || (function() {
     'use strict';
 
     var version = 'Prototype 0.089',
-        sheetVersion = [1.6],
+        sheetVersion = [1.6,2],
         lastUpdate = 1495733963,
         schemaVersion = 0.089,
         defaults = {
@@ -102,10 +102,12 @@ var PFCompanion = PFCompanion || (function() {
                 currSheet = parseFloat(a.get('current'));
             }
         });
+        var lowestVer = parseFloat(sheetVersion[0]);
+        var highestVer = parseFloat(sheetVersion[1]);
         //if(_.indexOf(sheetVersion,currSheet)===-1){
-        if (currSheet >= sheetVersion[0]){
+        if (currSheet < lowestVer || currSheet >= highestVer) {
             sendChat('Pathfinder Companion','This version of the Neceros Pathfinder Sheet Companion is only compatible with sheet version '+sheetVersion
-            +'. You do not appear to be using the correct Neceros Pathfinder sheet, please switch to the appropriate sheet, or the companion script for your '
+            +'. You appear to be using version ' + currSheet + ' of the Neceros Pathfinder sheet, please switch to the appropriate sheet, or the companion script for your '
             +'sheet. The script has not initialized and will not respond to events or commands.',null,{noarchive:true});
             return;
         }
@@ -1110,7 +1112,7 @@ var PFCompanion = PFCompanion || (function() {
             +'<div style="font-weight: bold; border-bottom: 1px solid black;font-size: 130%;">'//Control Panel Header div
             +'[Pathfinder]('+mediumLogo+')<br>Companion API Script v'+version
             +'<b> Buff Status Selector</b></div>',
-            currBuffs = _.filter(findObjs({type:'attribute',characterid:character.id}),(a)=>{return a.get('name').match(/repeating_buff_-[^_]+_buff-name/)}),
+            currBuffs = _.filter(findObjs({type:'attribute',characterid:character.id}),(a)=>{return a.get('name').match(/repeating_buff2_-[^_]+_name/)}),
             markersUsed = [],
             buffName,buffMarker,buffMatch,command;
         if(_.isEmpty(currBuffs)){
@@ -1234,10 +1236,10 @@ var PFCompanion = PFCompanion || (function() {
             }
         }
         if(buff){
-            buffNameAttr = buff ? _.find(attributes,(a)=>{return a.get('name').match(/repeating_buff_-[^_]+_buff-name/) && a.get('current').toLowerCase().match(buff.toLowerCase())}) : undefined;
-            buffAttr=getAttrByName(character.id,buffNameAttr.get('name').replace('buff-name','buff-enable_toggle'));
+            buffNameAttr = buff ? _.find(attributes,(a)=>{return a.get('name').match(/repeating_buff2_-[^_]+_name/) && a.get('current').toLowerCase().match(buff.toLowerCase())}) : undefined;
+            buffAttr=getAttrByName(character.id,buffNameAttr.get('name').replace('name','enable_toggle'));
             buffState = (swap ? swapper[buffAttr+''] : (remove ? '0' : '1'));
-            buffNameAttr ? createAttrWithWorker(buffNameAttr.get('name').replace('buff-name','buff-enable_toggle'),character.id,attributes,buffState) : undefined;
+            buffNameAttr ? createAttrWithWorker(buffNameAttr.get('name').replace('name','enable_toggle'),character.id,attributes,buffState) : undefined;
             buffMatch = buffNameAttr.get('current').match(/(.*(?=\s+\|\|\s+))\s+\|\|\s+(.*)/);
             if(state.PFCompanion.defaultToken.enable==='on' && (barLinked || !_.isEmpty(character.get('controlledby'))) && buffMatch){
                 graphic = findObjs({type:'graphic',represents:character.id})[0];
@@ -2756,7 +2758,7 @@ var PFCompanion = PFCompanion || (function() {
                     _.defer(checkForCustomTracking,obj);
                 }else if(obj.get('name')==='HP' && parseInt(obj.get('current'))!==parseInt(prev.current) && state.PFCompanion.hp==='on'){
                     _.defer(handleHP,obj,prev);
-                }else if(obj.get('name').match(/condition-.*|repeating_buff_[^_]+_buff-enable_toggle/)){
+                }else if(obj.get('name').match(/condition-.*|repeating_buff2_[^_]+_enable_toggle/)){
                     let condName = obj.get('name').replace('condition-','');
                     let cbName = obj.get('name').match(/condition-.*/) ? state.PFCompanion.markers[(obj.get('name').replace('condition-','')==='Drained' ? 'Energy Drain' : obj.get('name').replace('condition-',''))] : getAttrByName(obj.get('characterid'),obj.get('name').replace('enable_toggle','name'));
                     let character = getObj('character',obj.get('characterid'));
@@ -2788,7 +2790,7 @@ var PFCompanion = PFCompanion || (function() {
                     },0);
                 }else if(obj.get('name').match(/_-.+_description|_-.+_notes/)){
                     _.defer(checkForCustomTracking,obj);
-                }else if(obj.get('name').match(/condition-.*|repeating_buff_[^_]+_buff-enable_toggle/)){
+                }else if(obj.get('name').match(/condition-.*|repeating_buff2_[^_]+_enable_toggle/)){
                     let cbName = obj.get('name').match(/condition-.*/) ? obj.get('name').replace('condition-','') : getAttrByName(obj.get('characterid'),obj.get('name').replace('enable_toggle','name'));
                     let character = getObj('character',obj.get('characterid'));
                     if(!cbName){return}
@@ -2930,7 +2932,7 @@ var PFCompanion = PFCompanion || (function() {
                                         });
                                     }) : undefined;
                                     _.each(findObjs({type:'attribute',characterid:character.id}),(a)=>{
-                                        if(a.get('name').match(/repeating_buff_-[^_]+_buff-name/)){
+                                        if(a.get('name').match(/repeating_buff2_-[^_]+_name/)){
                                             buffMatch = a.get('current').match(/(.*(?=\s+\|\|))\s+\|\|\s+(.*)/);
                                             if(buffMatch){
                                                 buffMarkers.push({'name':buffMatch[1],'marker':buffMatch[2]});

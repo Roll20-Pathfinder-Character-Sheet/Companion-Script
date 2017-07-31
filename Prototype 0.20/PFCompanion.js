@@ -1915,7 +1915,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                                 accrue[k]=accrue[k].split('___Spell Parse Site___');
                                 accrue[k]=_.reject(accrue[k],(a)=>{return _.isEmpty(a)});
                                 _.each(accrue[k],(a)=>{
-                                    let section = a.match(/(?:Spell-Like Abilities|Psychic Magic)\s/) ? 'npc-spellike-ability-text' : 'npc-spells-'+(a.match(/prepared/) ? 'prepared_compendium' : 'known-text');
+                                    let section = a.match(/(?:Spell-Like Abilities|Psychic Magic)\s/i) ? 'npc-spellike-ability-text' : 'npc-spells-'+(a.match(/prepared/i) ? 'prepared_compendium' : 'known-text');
                                     attributesToSet[section] = attributesToSet[section] ? attributesToSet[section]+a : a.replace(/^\n/,'');
                                 });
                                 break;

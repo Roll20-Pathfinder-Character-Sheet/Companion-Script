@@ -1171,6 +1171,8 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
         msg+='<div style="border-top:1px solid black;"><b>Conditions:</b><br>';
         _.each(conditions,(c)=>{
             if(c.get('name').match(/drain/i)){
+                log(c);
+                log(getAttrByName(c.get('characterid'),c.get('name')));
                 msg +=makeButton('!pfc --apply,condition='+c.get('name').replace('condition-','')+' ?{Level of Energy Drain}|'+character.id+' --statuscontrol','Energy Drain '+c.get('current')||'0',(c.get('current')*1 ===0 ? '#C0C0C0' : 'green'),'black')+' ';
             }else{
                 msg +=makeButton('!pfc --apply,condition='+c.get('name').replace('condition-','')+',swap|'+character.id+' --statuscontrol',c.get('name').replace('condition-',''),(c.get('current')*1 ===0 ? '#C0C0C0' : 'green'),'black',(c.get('current')*1 ===0 ? 'Turn On' : 'Turn Off'))+' ';
@@ -1254,22 +1256,38 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                     '4':'0'
                 },
                 convertValue = {
+                    'Bleed':'1',
                     'Blinded':'2',
-                    'Entangled':'2',
-                    'Invisible':'2',
                     'Cowering':'2',
-                    'Fear':'2',
-                    'Pinned':'4',
+                    'Dazed':'1',
                     'Dazzled':'1',
-                    'Flat-Footed':'1',
-                    'Prone':'4',
+                    'Dead':'1',
                     'Deafened':'4',
-                    'Grappled':'2',
-                    'Sickened':'2',
-                    'Helpless':'1',
-                    'Stunned':'2',
+                    'Disabled':'1',
+                    'Drowning':'1',
+                    'Dying':'1',
+                    'Energy Drain':'1',
+                    'Entangled':'2',
                     'Exhausted':'3',
-                    'Fatigued':'1'
+                    'Fascinated':'1',
+                    'Fatigued':'1',
+                    'Fear':'2',
+                    'Flat-Footed':'1',
+                    'Grappled':'2',
+                    'Helpless':'1',
+                    'Incorporeal':'1',
+                    'Invisible':'2',
+                    'Nauseated':'1',
+                    'Paralyzed':'1',
+                    'Petrified':'1',
+                    'Pinned':'4',
+                    'Prone':'4',
+                    'Sickened':'2',
+                    'Stable':'1',
+                    'Staggered':'1',
+                    'Suffocating':'1',
+                    'Stunned':'2',
+                    'Unconscious':'1', 
                 },
                 conditionNameArr = ['Bleed','Blinded','Cowering','Dazed','Dazzled','Dead','Deafened','Disabled','Drowning','Dying','Energy Drain','Entangled','Exhausted','Fascinated','Fatigued','Fear','Flat-Footed','Grappled','Helpless','Incorporeal','Invisible','Nauseated','Paralyzed','Petrified','Pinned','Prone','Sickened','Stable','Staggered','Stunned','Suffocating','Unconscious'],
                 conditionAttributes,conditionAttr,conditionName,drainMatch,

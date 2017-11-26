@@ -15,10 +15,10 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
 *Feat/Ability/Spell import
 */
 
-    var version = 'Prototype 1.0',
-        sheetVersion = 1.6,
-        lastUpdate = 1502804278,
-        schemaVersion = 1.0,
+    var version = '1.01511665715',
+        sheetVersion = [1.6,1.7],
+        lastUpdate = 1511665715,
+        schemaVersion = 1.01511665715,
         defaults = {
             css: {
                 button: {
@@ -107,7 +107,9 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
             _.defer((id)=>{resolve(getAttrByName(id,'PFSheet_Version'))},character.id);
         });
         character.remove();
-        return (~~((sVersion-sheetVersion)*10)===0);
+        return _.some(sheetVersion,(sv)=>{
+            return (~~((sVersion-sv)*10)===0);
+        });
     },
     
     checkInstall = async function(){
@@ -1402,6 +1404,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
         }catch(err){
             sendError(err);
         }
+        return 'finished';
     },
     
     applyStatus = function(character,status,state,mook){
@@ -3114,7 +3117,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                                 return !_.isEmpty(defaultToken['bar'+b+'_link']);
                             });
                             if(barLinked||graphic){
-                                applyConditions(graphic||character,condition,buff,undefined,'remove');
+                                await applyConditions(graphic||character,condition,buff,undefined,'remove');
                             }
                         }
                     }
@@ -3125,6 +3128,13 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                     character = name ? _.find(findObjs({type:'character',name:name})) : undefined;
                     if(!_.isEmpty(oTurn[0].token)){
                         graphic=getObj('graphic',oTurn[0].token);
+                    }
+                    if(depth===0){
+                        log('oTurn: '+JSON.stringify(oTurn));
+                        log('character: '+JSON.stringify(character));
+                        log('graphic: '+JSON.stringify(graphic));
+                        log('buff: '+buff);
+                        log('condition: '+condition);
                     }
                     if((buff || condition) && oTurn[0].pr*1<=depth && (character || graphic)){
                         if(character){
@@ -3142,7 +3152,7 @@ Thanks to: The Aaron for helping with figuring out the statblock parsing. Vince 
                             });
                         }
                         if(barLinked||graphic){
-                            applyConditions(graphic||character,condition,buff,undefined,'remove');
+                            await applyConditions(graphic||character,condition,buff,undefined,'remove');
                             campaignHandler(obj,'change',newPrev,1);
                         }
                     }
